@@ -1,69 +1,67 @@
-# Welcome to your Lovable project
+# OneLink – Sterling Mutuals
 
-## Project info
+OneLink is a modern Sterling Mutuals advisor platform built with Vite, React, and TypeScript.  
+It provides a streamlined workspace for advisors, featuring:
 
-**URL**: https://lovable.dev/projects/a8baea9a-97ae-4008-b023-5de63357c0e2
+- Secure, branded sign-in experience with recovery flows  
+- Dashboard for portfolio balances, client accounts, trades, and compliance indicators  
+- KYP tooling, trade supervision, analytics, and other Sterling Mutuals workflows  
+- Light-only interface designed with Tailwind CSS and shadcn UI components  
+- Modular page structure with React Router and shared layout components  
 
-## How can I edit this code?
+## Getting Started
 
-There are several ways of editing your application.
+### Prerequisites
+- Node.js (v18+) and npm
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/a8baea9a-97ae-4008-b023-5de63357c0e2) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
+### Installation
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+git clone https://github.com/kabir2004/OneLink----Sterling-Mutuals.git
+cd "OneLink - Sterling Mutuals"
+npm install
 ```
 
-**Edit a file directly in GitHub**
+### Development
+```sh
+npm run dev
+```
+The dev server runs on `http://localhost:5173/` (or the next available port).
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Build
+```sh
+npm run build
+```
+Production assets are emitted to the `dist/` directory.
 
-**Use GitHub Codespaces**
+### Preview Production Build
+```sh
+npm run preview
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Project Structure
+- `src/pages` – Application routes (dashboard, KYP, analytics, etc.)
+- `src/components` – Reusable UI and layout components
+- `src/data` – Sample data for dashboards and KYP flows
+- `src/context` – Auth provider for global sign-out
+- `public` – Static assets
 
-## What technologies are used for this project?
+## Deployment
+The project builds to a static bundle and can be hosted on any CDN or static host:
 
-This project is built with .
+1. Run `npm run build`.
+2. Upload the `dist/` directory to your hosting provider (Vercel, Netlify, Cloudflare Pages, etc.).
+3. Configure the site root to serve from `dist/`.
 
+For Git-based platforms (e.g., Vercel/Netlify), point the build command to `npm run build` and the output directory to `dist/`.
+
+## Tech Stack
+- React + TypeScript
 - Vite
-- TypeScript
-- React
-- shadcn-ui
 - Tailwind CSS
+- shadcn/ui component library
+- lucide-react icon library
+- next-themes (ThemeProvider)
+- TanStack Query
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/a8baea9a-97ae-4008-b023-5de63357c0e2) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+## License
+This project is proprietary to Sterling Mutuals. All rights reserved.
