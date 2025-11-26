@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronLeft, ChevronsLeft, ChevronsRight, CheckCircle2 as CheckCircle2Icon, User } from 'lucide-react';
@@ -1449,40 +1448,34 @@ export default function TradeCompliance() {
                                     </TableCell>
                                     <TableCell>
                                       <div className="flex flex-col gap-2">
-                                        <Collapsible>
-                                          <CollapsibleTrigger className="flex items-center gap-1 text-sm text-primary hover:underline w-full">
-                                            <ChevronRight className="h-3 w-3 transition-transform duration-200 data-[state=open]:rotate-90" />
+                                        <div className="space-y-2">
+                                          <div className="text-sm font-medium text-gray-700">
                                             Trade Reviews ({trade.tradeReviews.length})
-                                          </CollapsibleTrigger>
-                                          <CollapsibleContent className="pl-4 mt-1 space-y-2">
-                                            {trade.tradeReviews.length > 0 ? (
-                                              trade.tradeReviews.map((review, idx) => (
-                                                <div key={idx} className="text-xs text-muted-foreground p-2 bg-muted rounded border-l-2 border-primary">
-                                                  {review}
-                                                </div>
-                                              ))
-                                            ) : (
-                                              <div className="text-xs text-muted-foreground italic">No reviews</div>
-                                            )}
-                                          </CollapsibleContent>
-                                        </Collapsible>
-                                        <Collapsible>
-                                          <CollapsibleTrigger className="flex items-center gap-1 text-sm text-primary hover:underline w-full">
-                                            <ChevronRight className="h-3 w-3 transition-transform duration-200 data-[state=open]:rotate-90" />
+                                          </div>
+                                          {trade.tradeReviews.length > 0 ? (
+                                            trade.tradeReviews.map((review, idx) => (
+                                              <div key={idx} className="text-xs text-muted-foreground p-2 bg-muted rounded border-l-2 border-primary">
+                                                {review}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="text-xs text-muted-foreground italic">No reviews</div>
+                                          )}
+                                        </div>
+                                        <div className="space-y-2">
+                                          <div className="text-sm font-medium text-gray-700">
                                             Trade Notes ({trade.tradeNotes.length})
-                                          </CollapsibleTrigger>
-                                          <CollapsibleContent className="pl-4 mt-1 space-y-2">
-                                            {trade.tradeNotes.length > 0 ? (
-                                              trade.tradeNotes.map((note, idx) => (
-                                                <div key={idx} className="text-xs text-muted-foreground p-2 bg-muted rounded border-l-2 border-yellow-500">
-                                                  {note}
-                                                </div>
-                                              ))
-                                            ) : (
-                                              <div className="text-xs text-muted-foreground italic">No notes</div>
-                                            )}
-                                          </CollapsibleContent>
-                                        </Collapsible>
+                                          </div>
+                                          {trade.tradeNotes.length > 0 ? (
+                                            trade.tradeNotes.map((note, idx) => (
+                                              <div key={idx} className="text-xs text-muted-foreground p-2 bg-muted rounded border-l-2 border-yellow-500">
+                                                {note}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="text-xs text-muted-foreground italic">No notes</div>
+                                          )}
+                                        </div>
                                       </div>
                                 </TableCell>
                               </TableRow>

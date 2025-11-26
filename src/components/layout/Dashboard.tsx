@@ -6,7 +6,6 @@ import {
   generatePriceHistory 
 } from '@/utils/stocksApi';
 import { Navbar } from '@/components/layout/Navbar';
-import { Sidebar } from '@/components/layout/Sidebar';
 import { StockCard } from '@/components/stocks/StockCard';
 import { StockChart } from '@/components/stocks/StockChart';
 import { MarketOverview } from '@/components/markets/MarketOverview';
@@ -16,7 +15,6 @@ import { StatsCard } from '@/components/ui/StatsCard';
 import { BarChart3, TrendingDown, TrendingUp, Wallet2 } from 'lucide-react';
 
 export function Dashboard() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedStock, setSelectedStock] = useState(mockStocks[0]);
   
   // Use our hooks to get real-time mock data
@@ -45,20 +43,13 @@ export function Dashboard() {
   const totalMarketCap = stocks.reduce((sum, stock) => sum + stock.marketCap, 0);
   const totalVolume = stocks.reduce((sum, stock) => sum + stock.volume, 0);
   
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed(prev => !prev);
-  };
-  
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
       
-      <div className="flex-1 flex">
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={toggleSidebar} />
-        
-        <main className="flex-1 transition-all duration-300">
-          <div className="container max-w-full p-4 lg:p-6 animate-fade-in">
-            <h1 className="text-2xl font-bold mb-6">Market Dashboard</h1>
+      <main className="flex-1 mt-16">
+        <div className="container max-w-full p-4 lg:p-6 animate-fade-in">
+          <h1 className="text-2xl font-bold mb-6">Market Dashboard</h1>
             
             {/* Stats Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 animate-slide-up" style={{ '--delay': '100ms' } as React.CSSProperties}>
@@ -131,7 +122,6 @@ export function Dashboard() {
             </div>
           </div>
         </main>
-      </div>
     </div>
   );
 }

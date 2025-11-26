@@ -8,22 +8,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import SignIn from "./pages/SignIn";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import Analytics from "./pages/Analytics";
-import Transactions from "./pages/Transactions";
 import Clients from "./pages/Clients";
 import Plans from "./pages/Plans";
 import AccountsTrades from "./pages/AccountsTrades";
-import KYPTool from "./pages/KYPTool";
-import KYPReview from "./pages/KYPReview";
-import KYPProductSelection from "./pages/KYPProductSelection";
-import KYPComparison from "./pages/KYPComparison";
-import KYPFinalReview from "./pages/KYPFinalReview";
-import TradeCompliance from "./pages/TradeCompliance";
-import InvoicesPayments from "./pages/InvoicesPayments";
-import Members from "./pages/Members";
-import Permissions from "./pages/Permissions";
-import Chat from "./pages/Chat";
-import Meetings from "./pages/Meetings";
+import Compliance from "./pages/Compliance";
+import AuditLog from "./pages/AuditLog";
+import Settings from "./pages/Settings";
 import { AuthProvider } from "./context/AuthContext";
 
 const queryClient = new QueryClient();
@@ -77,23 +67,12 @@ const App = () => {
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Index />} />
-                  <Route path="/analytics" element={<Analytics />} />
-                  <Route path="/transactions" element={<Transactions />} />
                   <Route path="/clients" element={<Clients />} />
                   <Route path="/plans" element={<Plans />} />
                   <Route path="/accounts-trades" element={<AccountsTrades />} />
-                  <Route path="/kyp-tool" element={<KYPTool />} />
-                  <Route path="/kyp-review" element={<KYPReview />} />
-                  <Route path="/kyp-product-selection" element={<KYPProductSelection />} />
-                  <Route path="/kyp-comparison" element={<KYPComparison />} />
-                  <Route path="/kyp-final-review" element={<KYPFinalReview />} />
-                  <Route path="/kyp-final-review" element={<KYPFinalReview />} />
-                  <Route path="/trade-compliance" element={<TradeCompliance />} />
-                  <Route path="/invoices-payments" element={<InvoicesPayments />} />
-                  <Route path="/members" element={<Members />} />
-                  <Route path="/permissions" element={<Permissions />} />
-                  <Route path="/chat" element={<Chat />} />
-                  <Route path="/meetings" element={<Meetings />} />
+                  <Route path="/compliance" element={<Compliance />} />
+                  <Route path="/audit-log" element={<AuditLog />} />
+                  <Route path="/settings" element={<Settings />} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
