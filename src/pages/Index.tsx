@@ -22,7 +22,6 @@ import {
   DollarSign,
   Users,
   BriefcaseBusiness,
-  FolderOpen,
   ShieldCheck,
   ArrowUpRight,
   ArrowDownRight,
@@ -329,8 +328,7 @@ const Index = () => {
 
   const statsCards = [
     { label: 'Assets Under Administration', value: '$1,055,611.55', icon: DollarSign, iconBg: 'bg-green-100', iconColor: 'text-green-600' },
-    { label: 'Active Clients', value: '27', icon: Users, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
-    { label: 'Open Plans', value: '14', icon: FolderOpen, iconBg: 'bg-purple-100', iconColor: 'text-purple-600' },
+    { label: 'Clients', value: '27', icon: Users, iconBg: 'bg-blue-100', iconColor: 'text-blue-600' },
     { label: 'Trades Pending', value: '3', icon: Clock, iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
   ];
 
@@ -345,6 +343,9 @@ const Index = () => {
     { type: 'LIF', count: 1, hoverColor: 'hover:bg-pink-50 hover:border-pink-200' },
     { type: 'RDSP', count: 1, hoverColor: 'hover:bg-orange-50 hover:border-orange-200' },
   ];
+
+  // Calculate total plans
+  const totalPlans = planTypes.reduce((sum, plan) => sum + plan.count, 0);
 
   const transactions = [
     { name: 'Smith Trust - Fund Purchase', time: 'Today • 2:45 PM', amount: '-$25,000.00', isNegative: true, icon: HandCoins },
@@ -610,9 +611,13 @@ const Index = () => {
     <PageLayout title="">
       <div className="space-y-6">
         {/* Advisor Snapshot */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {statsCards.map((stat, index) => (
-            <Card key={index} className="border border-gray-200 shadow-sm bg-white">
+            <Card 
+              key={index} 
+              className={`border border-gray-200 shadow-sm bg-white ${stat.label === 'Clients' ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+              onClick={stat.label === 'Clients' ? () => navigate('/clients') : undefined}
+            >
               <CardContent className="flex items-center justify-between py-4">
                 <div className="space-y-1">
                   <CardDescription className="text-gray-500 text-xs uppercase tracking-wide">
@@ -628,34 +633,13 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Quick Actions & Holdings */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="border border-gray-200 shadow-sm bg-white lg:col-span-1">
+        {/* Plans */}
+        <div className="grid grid-cols-1 gap-4">
+          <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold text-gray-900">New Record Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button 
-                className="w-full justify-start gap-3 bg-gray-900 hover:bg-gray-800 text-white"
-                onClick={handleNewClient}
-              >
-                <Plus className="h-4 w-4" />
-                New Client
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full justify-start gap-3 border-gray-300 text-gray-900"
-                onClick={handleCreatePlan}
-              >
-                <Layers className="h-4 w-4" />
-                Create Plan
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border border-gray-200 shadow-sm bg-white lg:col-span-2">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold text-gray-900">Plan Types</CardTitle>
+              <CardTitle className="text-base font-semibold text-gray-900">
+                Plans <span className="text-gray-500 font-normal">({totalPlans})</span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {planTypes.map((plan, index) => (
@@ -677,7 +661,7 @@ const Index = () => {
           <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold text-gray-900">Recent Activity</CardTitle>
+              <CardTitle className="text-base font-semibold text-gray-900">Recent Activity</CardTitle>
                 <Select
                   value={activityFilter.timePeriod}
                   onValueChange={(value: 'all' | 'today' | 'yesterday' | 'week' | 'month') =>
@@ -778,12 +762,12 @@ const Index = () => {
                       {tradesInProgress.map((trade, index) => (
                         <div key={index} className="rounded-lg border border-gray-100 px-3 py-2.5">
                           <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-2 text-gray-900">
+                      <div className="flex items-center gap-2 text-gray-900">
                               <Clock className="h-4 w-4 text-orange-500" />
                               <div>
                                 <span className="text-sm font-medium">{trade.symbol}</span>
                                 <p className="text-xs text-gray-500">{trade.company}</p>
-                              </div>
+                      </div>
                             </div>
                             <Badge className={
                               trade.status === 'Pending' 
@@ -809,15 +793,15 @@ const Index = () => {
                           </div>
                           <div className="text-xs text-gray-400 mt-1">
                             {trade.time}
-                          </div>
-                        </div>
-                      ))}
+                      </div>
+                    </div>
+                  ))}
                     </div>
                     <div className="mt-auto pt-4">
-                      <Button variant="outline" className="w-full border-gray-300 text-xs py-2">
+                  <Button variant="outline" className="w-full border-gray-300 text-xs py-2">
                         View all trades
-                      </Button>
-                    </div>
+                  </Button>
+                </div>
                   </div>
                 )}
 
@@ -830,39 +814,39 @@ const Index = () => {
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2 text-gray-900">
                               <XCircle className="h-4 w-4 text-red-600" />
-                              <div>
+                <div>
                                 <span className="text-sm font-medium">{trade.symbol}</span>
                                 <p className="text-xs text-gray-500">{trade.company}</p>
-                              </div>
-                            </div>
+                      </div>
+                      </div>
                             <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
                               Rejected
                             </Badge>
-                          </div>
+                    </div>
                           <div className="space-y-1 mb-2">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-gray-500">Client:</span>
                               <span className="text-gray-700 font-medium">{trade.client}</span>
-                            </div>
+                      </div>
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-gray-500">Plan:</span>
                               <span className="text-gray-700 font-medium">{trade.plan}</span>
-                            </div>
-                          </div>
+                      </div>
+                    </div>
                           <div className="bg-red-50 border border-red-200 rounded-md p-2 mb-2">
                             <p className="text-xs font-medium text-red-800 mb-1">Rejection Reason:</p>
                             <p className="text-xs text-red-700">{trade.rejectionMessage}</p>
-                          </div>
+                      </div>
                           <div className="flex items-center justify-between text-xs text-gray-600 pt-1 border-t border-red-100">
                             <span>{trade.type}</span>
                             <span className="font-semibold text-gray-900">{trade.amount}</span>
-                          </div>
+                      </div>
                           <div className="text-xs text-gray-400 mt-1">
                             {trade.time}
-                          </div>
-                        </div>
-                      ))}
                     </div>
+                      </div>
+                      ))}
+                      </div>
                     <div className="mt-auto pt-4">
                       <Button variant="outline" className="w-full border-gray-300 text-xs py-2">
                         View all rejected trades
@@ -883,7 +867,7 @@ const Index = () => {
                               <div>
                                 <span className="text-sm font-medium">{trade.symbol}</span>
                                 <p className="text-xs text-gray-500">{trade.company}</p>
-                              </div>
+                </div>
                             </div>
                             <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
                               Confirmed
@@ -1881,10 +1865,10 @@ const Index = () => {
                 />
               </div>
 
-              <div className="space-y-2">
+                <div className="space-y-2">
                 <Label htmlFor="beneficiaryDateOfBirth" className="text-sm font-medium text-gray-700">
                   Beneficiary Date of Birth <span className="text-red-500">*</span>
-                </Label>
+                  </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -1907,12 +1891,12 @@ const Index = () => {
                     />
                   </PopoverContent>
                 </Popover>
-              </div>
+                </div>
 
-              <div className="space-y-2">
+                  <div className="space-y-2">
                 <Label htmlFor="beneficiaryAddress" className="text-sm font-medium text-gray-700">
                   Beneficiary Address <span className="text-red-500">*</span>
-                </Label>
+                    </Label>
                 <Input
                   id="beneficiaryAddress"
                   value={clientFormValues.beneficiaryAddress}

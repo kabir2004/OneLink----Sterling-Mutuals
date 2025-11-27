@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, Plus, UploadCloud, Eye, Pencil, FileUp, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, ArrowLeftRight, FileText, X, CheckCircle2, Search } from "lucide-react";
+import { Loader2, Plus, UploadCloud, Eye, Pencil, FileUp, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, ArrowLeftRight, FileText, X, CheckCircle2, Search, ArrowLeft } from "lucide-react";
 
 type DocumentStatus = "Uploaded" | "Required" | "Missing";
 type ClientStatus = "Active" | "Inactive" | "Prospect";
@@ -139,6 +140,13 @@ type Client = {
   assets: string;
   plans: Plan[];
   recentActivity: { label: string; timestamp: string }[];
+  beneficiary?: string;
+  contingentBeneficiary?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
 };
 
 const CLIENTS: Client[] = [
@@ -358,6 +366,13 @@ const CLIENTS: Client[] = [
       { label: "Fund purchase • $25,000", timestamp: "Today • 2:45 PM" },
       { label: "Portfolio review completed", timestamp: "Oct 29 • 9:12 AM" },
     ],
+    beneficiary: "Sarah Smith",
+    contingentBeneficiary: "Michael Smith",
+    dateOfBirth: "1975-03-15",
+    address: "123 Maple Street",
+    city: "Toronto",
+    province: "ON",
+    postalCode: "M5H 2N2",
   },
   {
     id: "CL-002",
@@ -1182,6 +1197,7 @@ const docBadgeStyles: Record<DocumentStatus, string> = {
 };
 
 const Clients = () => {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>(CLIENTS);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -1189,6 +1205,8 @@ const Clients = () => {
   const [showAddClient, setShowAddClient] = useState(false);
   const [showEditClient, setShowEditClient] = useState(false);
   const [showUploadDocs, setShowUploadDocs] = useState(false);
+  const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
+  const [uploadedDocuments, setUploadedDocuments] = useState<Record<string, Array<{ id: string; name: string; date: string; file?: File }>>>({});
   const [showBuyUnits, setShowBuyUnits] = useState(false);
   const [showSellUnits, setShowSellUnits] = useState(false);
   const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
@@ -1326,11 +1344,6 @@ const Clients = () => {
     relationshipRoles: "",
     clientType: "",
   });
-  const [statusFilter, setStatusFilter] = useState<Record<ClientStatus, boolean>>({
-    Active: false,
-    Inactive: false,
-    Prospect: false,
-  });
   const [docFilter, setDocFilter] = useState<Record<DocumentStatus, boolean>>({
     Uploaded: false,
     Required: false,
@@ -1346,11 +1359,7 @@ const Clients = () => {
   });
   const [formError, setFormError] = useState<string | null>(null);
   const [isLoading] = useState(false);
-  const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
 
-  const activeStatusFilters = Object.entries(statusFilter)
-    .filter(([, checked]) => checked)
-    .map(([status]) => status as ClientStatus);
   const activeDocFilters = Object.entries(docFilter)
     .filter(([, checked]) => checked)
     .map(([status]) => status as DocumentStatus);
@@ -1370,37 +1379,46 @@ const Clients = () => {
           .toLowerCase()
           .includes(searchTerm.toLowerCase());
 
-      const matchesStatus =
-        activeStatusFilters.length === 0 ||
-        activeStatusFilters.includes(client.status);
-
       const matchesDocs =
         activeDocFilters.length === 0 ||
         activeDocFilters.includes(client.documents);
 
-      return matchesSearch && matchesStatus && matchesDocs;
+      return matchesSearch && matchesDocs;
     });
-    }, [clients, searchTerm, activeStatusFilters, activeDocFilters]);
-
-  const toggleStatusFilter = (status: ClientStatus) =>
-    setStatusFilter((prev) => ({ ...prev, [status]: !prev[status] }));
+    }, [clients, searchTerm, activeDocFilters]);
 
   const toggleDocFilter = (status: DocumentStatus) =>
     setDocFilter((prev) => ({ ...prev, [status]: !prev[status] }));
 
   const handleViewClient = (client: Client) => {
-    setSelectedClient(client);
-    if (Array.isArray(client.plans)) {
-      setExpandedPlans(new Set(client.plans.map(p => p.id)));
+    if (selectedClient?.id === client.id && showDetails) {
+      setSelectedClient(null);
+      setShowDetails(false);
     } else {
-      setExpandedPlans(new Set());
+      setSelectedClient(client);
+      if (Array.isArray(client.plans)) {
+        setExpandedPlans(new Set(client.plans.map(p => p.id)));
+      } else {
+        setExpandedPlans(new Set());
+      }
+      setShowDetails(true);
+      setShowEditClient(false);
+      setShowUploadDocs(false);
     }
-    setShowDetails(true);
   };
 
   const handleEditClient = (client: Client) => {
-    setSelectedClient(client);
-    setEditFormValues({
+    if (selectedClient?.id === client.id && showEditClient) {
+      setSelectedClient(null);
+      setShowEditClient(false);
+      setFormError(null);
+    } else {
+      setSelectedClient(client);
+      setShowEditClient(true);
+      setShowDetails(false);
+      setShowUploadDocs(false);
+      setFormError(null);
+      setEditFormValues({
       // Personal Information
       name: client.name,
       accountNumber: client.accountNumber,
@@ -1450,8 +1468,8 @@ const Clients = () => {
       accountOwnership: "",
       relationshipRoles: "",
       clientType: "",
-    });
-    setShowEditClient(true);
+      });
+    }
   };
 
   const handleSaveEdit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -1560,6 +1578,18 @@ const Clients = () => {
     }).format(value);
   };
 
+  const togglePlanExpansion = (planId: string) => {
+    setExpandedPlans((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(planId)) {
+        newSet.delete(planId);
+      } else {
+        newSet.add(planId);
+      }
+      return newSet;
+    });
+  };
+
   const calculateTotalHoldings = (plans: Plan[]) => {
     const totalMarketValue = plans.reduce((sum, plan) => sum + plan.marketValue, 0);
     const totalCostBasis = plans.reduce((sum, plan) => sum + plan.costBasis, 0);
@@ -1617,6 +1647,14 @@ const Clients = () => {
     <>
       <PageLayout title="">
         <div className="space-y-6">
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            className="mb-2 border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
           <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1633,44 +1671,6 @@ const Clients = () => {
                   />
 
                   <div className="flex items-center gap-3">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="w-[150px] justify-between text-sm font-normal"
-                        >
-                          {(() => {
-                            const selectedCount = Object.values(statusFilter).filter(Boolean).length;
-                            if (selectedCount === 0) return "All Statuses";
-                            if (selectedCount === 1) {
-                              return Object.entries(statusFilter).find(([, checked]) => checked)?.[0] || "All Statuses";
-                            }
-                            return `${selectedCount} selected`;
-                          })()}
-                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[150px] p-2" align="start">
-                        <div className="space-y-1">
-                          {(["Active", "Inactive", "Prospect"] as ClientStatus[]).map(
-                        (status) => (
-                          <label
-                            key={status}
-                                className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-100 rounded cursor-pointer"
-                          >
-                            <Checkbox
-                                  checked={statusFilter[status]}
-                                  onCheckedChange={() => toggleStatusFilter(status)}
-                                  className="h-4 w-4"
-                            />
-                            <span>{status}</span>
-                          </label>
-                        )
-                      )}
-                    </div>
-                      </PopoverContent>
-                    </Popover>
-
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -1739,13 +1739,14 @@ const Clients = () => {
                   </Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
+                <div className={`flex gap-4 ${(showDetails || showEditClient || showUploadDocs) && selectedClient ? 'flex-row' : ''}`}>
+                  {/* Table Section */}
+                  <div className={`overflow-x-auto ${(showDetails || showEditClient || showUploadDocs) && selectedClient ? 'w-[55%]' : 'w-full'}`}>
+                    <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Client</TableHead>
                         <TableHead>Account #</TableHead>
-                        <TableHead>Status</TableHead>
                         <TableHead>Documents</TableHead>
                         <TableHead>AUA</TableHead>
                         <TableHead>Plans</TableHead>
@@ -1767,13 +1768,6 @@ const Clients = () => {
                           </TableCell>
                           <TableCell className="text-sm text-gray-700">
                             {client.accountNumber}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`rounded-full px-2 py-1 text-xs font-medium ${statusBadgeStyles[client.status]}`}
-                            >
-                              {client.status}
-                            </span>
                           </TableCell>
                           <TableCell>
                             <span
@@ -1816,8 +1810,15 @@ const Clients = () => {
                                 className="border-gray-300 h-8 w-8 p-0"
                                 title="Upload Docs"
                                 onClick={() => {
-                                  setSelectedClient(client);
-                                  setShowUploadDocs(true);
+                                  if (selectedClient?.id === client.id && showUploadDocs) {
+                                    setSelectedClient(null);
+                                    setShowUploadDocs(false);
+                                  } else {
+                                    setSelectedClient(client);
+                                    setShowUploadDocs(true);
+                                    setShowDetails(false);
+                                    setShowEditClient(false);
+                                  }
                                 }}
                               >
                                 <FileUp className="h-4 w-4" />
@@ -1828,6 +1829,1114 @@ const Clients = () => {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
+
+                  {/* View Client Details - Right Side */}
+                  {showDetails && selectedClient && !showEditClient && !showUploadDocs && (
+                    <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
+                      <div className="sticky top-0 pt-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {selectedClient.name}
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Account {selectedClient.accountNumber}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedClient(null);
+                              setShowDetails(false);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <ScrollArea className="h-[calc(100vh-300px)] pr-2">
+                          <div className="space-y-4">
+                            {/* Client Summary */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">Client Summary</CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-6">
+                                {/* Basic Information */}
+                                <div>
+                                  <h4 className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide">Basic Information</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Account Number</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedClient.accountNumber}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Email</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedClient.email}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Phone</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedClient.phone}</p>
+                                  </div>
+                                    {selectedClient.dateOfBirth && (
+                                  <div>
+                                        <p className="text-xs text-gray-500 mb-1">Date of Birth</p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                          {new Date(selectedClient.dateOfBirth).toLocaleDateString('en-CA', { 
+                                            year: 'numeric', 
+                                            month: 'long', 
+                                            day: 'numeric' 
+                                          })}
+                                        </p>
+                                  </div>
+                                    )}
+                                    {(selectedClient.address || selectedClient.city || selectedClient.province) && (
+                                      <div>
+                                        <p className="text-xs text-gray-500 mb-1">Address</p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                          {[
+                                            selectedClient.address,
+                                            selectedClient.city,
+                                            selectedClient.province,
+                                            selectedClient.postalCode
+                                          ].filter(Boolean).join(', ')}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Account Details */}
+                                <div>
+                                  <h4 className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide">Account Details</h4>
+                                  <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <p className="text-xs text-gray-500 mb-1">Plans</p>
+                                    <p className="text-sm font-medium text-gray-900">
+                                        {Array.isArray(selectedClient.plans) ? selectedClient.plans.length : 0} plan(s)
+                                    </p>
+                                  </div>
+                                  <div>
+                                      <p className="text-xs text-gray-500 mb-1">Assets Under Administration (AUA)</p>
+                                    <p className="text-sm font-medium text-gray-900">{selectedClient.assets}</p>
+                                  </div>
+                                    <div>
+                                      <p className="text-xs text-gray-500 mb-1">Total Plans Value</p>
+                                      <p className="text-sm font-medium text-gray-900">
+                                        {Array.isArray(selectedClient.plans) 
+                                          ? formatCurrency(selectedClient.plans.reduce((sum, plan) => sum + plan.marketValue, 0))
+                                          : formatCurrency(0)}
+                                      </p>
+                                </div>
+                                  </div>
+                                </div>
+
+                                {/* Beneficiary Summary */}
+                                {(selectedClient.beneficiary || selectedClient.contingentBeneficiary) && (
+                                  <div>
+                                    <h4 className="text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wide">Beneficiary Information</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      {selectedClient.beneficiary && (
+                                        <div>
+                                          <p className="text-xs text-gray-500 mb-1">Primary Beneficiary</p>
+                                          <p className="text-sm font-medium text-gray-900">{selectedClient.beneficiary}</p>
+                                        </div>
+                                      )}
+                                      {selectedClient.contingentBeneficiary && (
+                                        <div>
+                                          <p className="text-xs text-gray-500 mb-1">Contingent Beneficiary</p>
+                                          <p className="text-sm font-medium text-gray-900">{selectedClient.contingentBeneficiary}</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Plans */}
+                            {Array.isArray(selectedClient.plans) && selectedClient.plans.length > 0 && (
+                              <Card className="border border-gray-200 shadow-sm bg-white">
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm font-semibold text-gray-900">
+                                    Plans ({selectedClient.plans.length})
+                                  </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-3">
+                                    {selectedClient.plans.map((plan) => {
+                                      const isExpanded = expandedPlans.has(plan.id);
+                                      return (
+                                        <div key={plan.id} className="border border-gray-200 rounded-lg overflow-hidden">
+                                          <button
+                                            onClick={() => togglePlanExpansion(plan.id)}
+                                            className="w-full p-3 hover:bg-gray-50 transition-colors text-left"
+                                          >
+                                            <div className="flex items-center justify-between">
+                                              <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-sm font-medium text-gray-900">{plan.type}</span>
+                                          <span className="text-sm text-gray-600">{plan.accountNumber}</span>
+                                        </div>
+                                                <div className="text-xs text-gray-500">
+                                                  Market Value: {formatCurrency(plan.marketValue)}
+                                      </div>
+                                              </div>
+                                              {isExpanded ? (
+                                                <ChevronUp className="h-4 w-4 text-gray-400 ml-2" />
+                                              ) : (
+                                                <ChevronDown className="h-4 w-4 text-gray-400 ml-2" />
+                                              )}
+                                            </div>
+                                          </button>
+                                          {isExpanded && plan.holdings && plan.holdings.length > 0 && (
+                                            <div className="border-t border-gray-200 bg-white">
+                                              <div className="p-4">
+                                                <Table>
+                                                  <TableHeader>
+                                                    <TableRow>
+                                                      <TableHead className="text-center">Symbol</TableHead>
+                                                      <TableHead className="w-[200px]">Product</TableHead>
+                                                      <TableHead className="text-center">Shares</TableHead>
+                                                      <TableHead className="text-center">Price</TableHead>
+                                                      <TableHead className="text-center">Market Value</TableHead>
+                                                      <TableHead className="text-center">Actions</TableHead>
+                                                    </TableRow>
+                                                  </TableHeader>
+                                                  <TableBody>
+                                                    {plan.holdings.map((holding, index) => (
+                                                      <TableRow key={index} className="hover:bg-gray-50">
+                                                        <TableCell className="text-center text-sm font-medium text-gray-900">
+                                                          {holding.symbol}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                          <span className="text-xs font-medium text-gray-900">
+                                                            {holding.name}
+                                                          </span>
+                                                        </TableCell>
+                                                        <TableCell className="text-center text-sm text-gray-700">
+                                                          {holding.shares.toLocaleString(undefined, {
+                                                            minimumFractionDigits: 2,
+                                                            maximumFractionDigits: 2,
+                                                          })}
+                                                        </TableCell>
+                                                        <TableCell className="text-center text-sm text-gray-700">
+                                                          {formatCurrency(holding.price)}
+                                                        </TableCell>
+                                                        <TableCell className="text-center text-sm text-gray-700">
+                                                          {formatCurrency(holding.marketValue)}
+                                                        </TableCell>
+                                                        <TableCell className="text-center">
+                                                          <div className="flex items-center justify-center gap-2">
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="sm"
+                                                              className="h-8 w-8 p-0"
+                                                              onClick={() => {
+                                                                setSelectedHolding({ holding, plan });
+                                                                setShowBuyUnits(true);
+                                                              }}
+                                                              title="Buy more units"
+                                                            >
+                                                              <Plus className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="sm"
+                                                              className="h-8 w-8 p-0"
+                                                              onClick={() => {
+                                                                setSelectedHolding({ holding, plan });
+                                                                setShowSellUnits(true);
+                                                              }}
+                                                              title="Sell units"
+                                                            >
+                                                              <Minus className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                              variant="ghost"
+                                                              size="sm"
+                                                              className="h-8 w-8 p-0"
+                                                              onClick={() => {
+                                                                setSelectedHolding({ holding, plan });
+                                                                setShowSwitchFund(true);
+                                                              }}
+                                                              title="Switch fund"
+                                                            >
+                                                              <ArrowLeftRight className="h-4 w-4" />
+                                                            </Button>
+                                                          </div>
+                                                        </TableCell>
+                                                      </TableRow>
+                                                    ))}
+                                                  </TableBody>
+                                                </Table>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+
+                            {/* Recent Activity */}
+                            {selectedClient.recentActivity && selectedClient.recentActivity.length > 0 && (
+                              <Card className="border border-gray-200 shadow-sm bg-white">
+                                <CardHeader className="pb-3">
+                                  <CardTitle className="text-sm font-semibold text-gray-900">Recent Activity</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                  <div className="space-y-2">
+                                    {selectedClient.recentActivity.map((item, index) => (
+                                      <div key={index} className="text-sm text-gray-700">
+                                        <p className="font-medium">{item.label}</p>
+                                        <p className="text-xs text-gray-500">{item.timestamp}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Edit Client - Right Side */}
+                  {showEditClient && selectedClient && !showDetails && !showUploadDocs && (
+                    <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
+                      <div className="sticky top-0 pt-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <Pencil className="h-5 w-5" />
+                            Edit Client
+                          </h3>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedClient(null);
+                              setShowEditClient(false);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <ScrollArea className="h-[calc(100vh-300px)] pr-2">
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleSaveEdit(e);
+                            }}
+                            className="space-y-4"
+                          >
+                            {formError && (
+                              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+                                {formError}
+                              </div>
+                            )}
+
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  Client Information
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit-name" className="text-xs">Client Name *</Label>
+                                  <Input
+                                    id="edit-name"
+                                    value={editFormValues.name}
+                                    onChange={(e) =>
+                                      setEditFormValues({ ...editFormValues, name: e.target.value })
+                                    }
+                                    placeholder="e.g. Smith Family Trust"
+                                    className="h-9 text-sm"
+                                    required
+                                  />
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit-account-number" className="text-xs">Account Number *</Label>
+                                  <Input
+                                    id="edit-account-number"
+                                    value={editFormValues.accountNumber}
+                                    onChange={(e) =>
+                                      setEditFormValues({ ...editFormValues, accountNumber: e.target.value })
+                                    }
+                                    placeholder="e.g. A-123456"
+                                    className="h-9 text-sm"
+                                    required
+                                  />
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-email" className="text-xs">Email</Label>
+                                    <Input
+                                      id="edit-email"
+                                      type="email"
+                                      value={editFormValues.email}
+                                      onChange={(e) =>
+                                        setEditFormValues({ ...editFormValues, email: e.target.value })
+                                      }
+                                      placeholder="name@clientmail.com"
+                                      className="h-9 text-sm"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label htmlFor="edit-phone" className="text-xs">Phone</Label>
+                                    <Input
+                                      id="edit-phone"
+                                      value={editFormValues.phone}
+                                      onChange={(e) =>
+                                        setEditFormValues({ ...editFormValues, phone: e.target.value })
+                                      }
+                                      placeholder="(555) 555-5555"
+                                      className="h-9 text-sm"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="edit-status" className="text-xs">Status *</Label>
+                                  <Select
+                                    value={editFormValues.status}
+                                    onValueChange={(value) =>
+                                      setEditFormValues({ ...editFormValues, status: value as ClientStatus })
+                                    }
+                                  >
+                                    <SelectTrigger className="h-9 text-sm">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Active">Active</SelectItem>
+                                      <SelectItem value="Inactive">Inactive</SelectItem>
+                                      <SelectItem value="Prospect">Prospect</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </CardContent>
+                            </Card>
+
+                            <div className="flex gap-2 pt-4">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedClient(null);
+                                  setShowEditClient(false);
+                                  setFormError(null);
+                                }}
+                                className="flex-1 border-gray-300"
+                              >
+                                Cancel
+                              </Button>
+                              <Button type="submit" className="flex-1 bg-gray-900 hover:bg-gray-800">
+                                Save Changes
+                              </Button>
+                            </div>
+                          </form>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Upload Documents - Right Side */}
+                  {showUploadDocs && selectedClient && !showDetails && !showEditClient && (
+                    <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
+                      <div className="sticky top-0 pt-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                              <FileUp className="h-5 w-5" />
+                              Upload Documents
+                            </h3>
+                            <p className="text-sm text-gray-600 mt-1">
+                              {selectedClient.name} • Account {selectedClient.accountNumber}
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedClient(null);
+                              setShowUploadDocs(false);
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <ScrollArea className="h-[calc(100vh-300px)] pr-2">
+                          <div className="space-y-4">
+                            {/* Document Category 1 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  1. Beneficiary Designation or Change Form
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-beneficiary"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "beneficiary";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-beneficiary')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.beneficiary && uploadedDocuments.beneficiary.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.beneficiary.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  beneficiary: prev.beneficiary?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Document Category 2 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  2. Successor Holder/Annuitant Election Form
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-successor"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "successor";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-successor')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.successor && uploadedDocuments.successor.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.successor.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  successor: prev.successor?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Document Category 3 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  3. Estate Planning or Will-Related Supporting Documents
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-estate"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "estate";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-estate')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.estate && uploadedDocuments.estate.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.estate.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  estate: prev.estate?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Document Category 4 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  4. Proof of Identity and Relationship Verification
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-identity"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "identity";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-identity')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.identity && uploadedDocuments.identity.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.identity.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  identity: prev.identity?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Document Category 5 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  5. Account Ownership Change Form
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-ownership"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "ownership";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-ownership')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.ownership && uploadedDocuments.ownership.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.ownership.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  ownership: prev.ownership?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Document Category 6 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  6. Power of Attorney (POA) or Third-Party Authorization Form
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-poa"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "poa";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-poa')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.poa && uploadedDocuments.poa.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.poa.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  poa: prev.poa?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Document Category 7 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  7. Death Notification and Claim Forms
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-death"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "death";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-death')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.death && uploadedDocuments.death.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.death.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  death: prev.death?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+
+                            {/* Document Category 8 */}
+                            <Card className="border border-gray-200 shadow-sm bg-white">
+                              <CardHeader className="pb-3">
+                                <CardTitle className="text-sm font-semibold text-gray-900">
+                                  8. Tax and Compliance Updates Related to Beneficiaries
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
+                                <div className="rounded-lg border border-dashed border-gray-300 p-4 text-center bg-gray-50 hover:border-gray-400 transition-colors">
+                                  <UploadCloud className="mx-auto h-6 w-6 text-gray-400 mb-2" />
+                                  <p className="text-xs font-medium text-gray-900 mb-1">
+                                    Drag & drop files here or click to browse
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 mb-2">
+                                    PDF, DOCX, JPG up to 25 MB
+                                  </p>
+                                  <input
+                                    type="file"
+                                    id="upload-tax"
+                                    className="hidden"
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const category = "tax";
+                                        const newDoc = {
+                                          id: `doc-${Date.now()}`,
+                                          name: file.name,
+                                          date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                                          file: file,
+                                        };
+                                        setUploadedDocuments(prev => ({
+                                          ...prev,
+                                          [category]: [...(prev[category] || []), newDoc],
+                                        }));
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    type="button"
+                                    className="border-gray-300 text-xs h-7"
+                                    onClick={() => document.getElementById('upload-tax')?.click()}
+                                  >
+                                    Browse files
+                                  </Button>
+                                </div>
+                                {uploadedDocuments.tax && uploadedDocuments.tax.length > 0 && (
+                                  <div className="text-xs text-gray-500">
+                                    <p className="font-medium mb-2">Uploaded Documents:</p>
+                                    <div className="space-y-1.5">
+                                      {uploadedDocuments.tax.map((doc) => (
+                                        <div key={doc.id} className="flex items-center justify-between rounded border border-gray-200 bg-white px-2 py-1.5 hover:bg-gray-50">
+                                          <div className="flex items-center gap-2">
+                                            <FileText className="h-3.5 w-3.5 text-gray-400" />
+                                            <span className="text-xs text-gray-700">{doc.name}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-500">{doc.date}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-5 w-5 p-0 hover:bg-red-50 hover:text-red-600"
+                                              onClick={() => {
+                                                setUploadedDocuments(prev => ({
+                                                  ...prev,
+                                                  tax: prev.tax?.filter(d => d.id !== doc.id) || [],
+                                                }));
+                                              }}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -1835,1252 +2944,9 @@ const Clients = () => {
         </div>
       </PageLayout>
 
-      <Sheet open={showDetails} onOpenChange={setShowDetails}>
-        <SheetContent side="right" className="!w-[50vw] !max-w-[50vw] overflow-y-auto bg-gray-50">
-          {selectedClient ? (
-            <>
-              <SheetHeader className="pb-4 border-b border-gray-200">
-                <SheetTitle className="text-xl font-semibold text-gray-900">
-                  {selectedClient.name}
-                </SheetTitle>
-                <SheetDescription className="text-sm text-gray-600 mt-1">
-                  Account {selectedClient.accountNumber}
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="mt-4 space-y-4">
-                {/* Top Section: Profile Summary and Total Holdings Side by Side */}
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Profile Summary */}
-                <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        Profile Summary
-                      </CardTitle>
-                  </CardHeader>
-                    <CardContent className="space-y-4">
-                    <div className="flex flex-wrap gap-2">
-                        <Badge
-                          className={statusBadgeStyles[selectedClient.status]}
-                        >
-                          {selectedClient.status}
-                        </Badge>
-                        <Badge variant="outline" className="border-gray-300">
-                        Documents: {selectedClient.documents}
-                      </Badge>
-                        <Badge variant="outline" className="border-gray-300">
-                          Plans: {Array.isArray(selectedClient.plans) ? selectedClient.plans.length : 0}
-                        </Badge>
-                        <Badge variant="outline" className="border-gray-300">
-                          AUA: {selectedClient.assets}
-                        </Badge>
-                    </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-100">
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                            Account ID
-                          </span>
-                          <span className="text-sm font-medium text-gray-900">
-                        {selectedClient.accountNumber}
-                          </span>
-                        </div>
-                        
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                            Email
-                          </span>
-                          <span className="text-xs text-gray-900">
-                            {selectedClient.email}
-                          </span>
-                        </div>
-                        
-                        <div className="flex flex-col space-y-1">
-                          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                            Phone
-                          </span>
-                          <span className="text-sm text-gray-900">
-                            {selectedClient.phone}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Total Account Holdings */}
-                  {Array.isArray(selectedClient.plans) && selectedClient.plans.length > 0 && (() => {
-                    const totals = calculateTotalHoldings(selectedClient.plans);
-                    return (
-                      <Card className="border border-gray-200 shadow-sm bg-white">
-                        <CardHeader className="pb-3">
-                          <CardTitle className="text-base font-semibold text-gray-900">
-                            Total Account Holdings
-                          </CardTitle>
-                          <CardDescription className="text-sm text-gray-500">
-                            Combined value across all accounts
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div className="flex items-baseline justify-between">
-                            <span className="text-sm text-gray-600">Market Value</span>
-                            <span className="text-2xl font-semibold text-gray-900">
-                              {formatCurrency(totals.totalMarketValue)}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                            <div className="flex flex-col">
-                              <span className="text-xs text-gray-500">Total Gain/Loss</span>
-                              <span className="text-sm font-medium text-gray-900">
-                                {formatCurrency(totals.totalCostBasis)} invested
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              {totals.totalGainLoss >= 0 ? (
-                                <TrendingUp className="h-4 w-4 text-green-600" />
-                              ) : (
-                                <TrendingDown className="h-4 w-4 text-red-600" />
-                              )}
-                              <span className={`text-sm font-semibold ${totals.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {formatCurrency(totals.totalGainLoss)} ({totals.totalGainLoss >= 0 ? '+' : ''}{totals.totalGainLossPercent.toFixed(2)}%)
-                              </span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })()}
-                </div>
-
-                {/* Plans & Holdings */}
-                {Array.isArray(selectedClient.plans) && selectedClient.plans.length > 0 ? (
-                  <div className="space-y-2">
-                    <h3 className="text-base font-semibold text-gray-900">Accounts & Holdings</h3>
-                    {selectedClient.plans.map((plan) => {
-                    const isExpanded = expandedPlans.has(plan.id);
-                    return (
-                      <Card key={plan.id} className="border border-gray-200 shadow-sm bg-white">
-                        <CardHeader 
-                          className="pb-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => togglePlan(plan.id)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <CardTitle className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                                {plan.type}
-                                <span className="text-xs font-normal text-gray-500">
-                                  {plan.accountNumber}
-                                </span>
-                              </CardTitle>
-                              <CardDescription className="text-sm text-gray-500 mt-1">
-                                {plan.holdings.length} holding{plan.holdings.length !== 1 ? 's' : ''}
-                              </CardDescription>
-                            </div>
-                            {isExpanded ? (
-                              <ChevronUp className="h-5 w-5 text-gray-400" />
-                            ) : (
-                              <ChevronDown className="h-5 w-5 text-gray-400" />
-                            )}
-                          </div>
-                          {!isExpanded && (
-                            <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-                              <div className="flex flex-col">
-                                <span className="text-xs text-gray-500">Market Value</span>
-                                <span className="text-lg font-semibold text-gray-900">
-                                  {formatCurrency(plan.marketValue)}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <div className="flex items-center gap-1">
-                                  <span className={`text-[11px] font-medium ${plan.totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {formatCurrency(plan.totalGainLoss)} ({plan.totalGainLoss >= 0 ? '+' : ''}{plan.totalGainLossPercent.toFixed(2)}%)
-                                  </span>
-                                  {plan.totalGainLoss >= 0 ? (
-                                    <TrendingUp className="h-4 w-4 text-green-600" />
-                                  ) : (
-                                    <TrendingDown className="h-4 w-4 text-red-600" />
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </CardHeader>
-                        {isExpanded && (
-                          <CardContent className="pt-0 pb-2">
-                            <div className="overflow-x-auto">
-                              <Table className="text-xs">
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="text-sm">Symbol</TableHead>
-                                    <TableHead className="text-sm">Product</TableHead>
-                                    <TableHead className="text-sm text-right">Shares</TableHead>
-                                    <TableHead className="text-sm text-right">Price</TableHead>
-                                    <TableHead className="text-sm text-right">Market Value</TableHead>
-                                    <TableHead className="text-sm text-center">Actions</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {plan.holdings.map((holding, idx) => (
-                                    <TableRow key={idx} className="hover:bg-gray-50">
-                                      <TableCell className="font-medium text-sm">
-                                        {holding.symbol}
-                                      </TableCell>
-                                      <TableCell className="text-sm text-gray-700">
-                                        <div className="flex flex-col">
-                                          <span>{holding.name}</span>
-                                          <span className="text-xs text-gray-500">
-                                            {holding.assetClass} {holding.sector && `• ${holding.sector}`}
-                                          </span>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-sm text-right text-gray-700">
-                                        {holding.shares.toLocaleString()}
-                                      </TableCell>
-                                      <TableCell className="text-sm text-right text-gray-700">
-                                        <div className="flex flex-col items-end">
-                                          <span>{formatCurrency(holding.price)}</span>
-                                          <span className={`text-[10px] leading-tight ${holding.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            ({holding.gainLoss >= 0 ? '+' : ''}{holding.gainLossPercent.toFixed(2)}%)
-                                          </span>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-sm text-right font-medium text-gray-900">
-                                        <div className="flex flex-col items-end">
-                                          <span>{formatCurrency(holding.marketValue)}</span>
-                                          <span className={`text-[10px] leading-tight ${holding.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                            {holding.gainLoss >= 0 ? '+' : ''}{formatCurrency(holding.gainLoss)}
-                                          </span>
-                                        </div>
-                                      </TableCell>
-                                      <TableCell className="text-sm text-center">
-                                        <div className="flex items-center justify-center gap-1">
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0 hover:bg-green-50 hover:text-green-600"
-                                            title="Add"
-                                            onClick={() => {
-                                              setSelectedHolding({ holding, plan });
-                                              setShowBuyUnits(true);
-                                              setBuyOrderData({
-                                                investmentAmount: "",
-                                                units: "",
-                                                estimatedCost: 0,
-                                                unitsToPurchase: 0,
-                                              });
-                                            }}
-                                          >
-                                            <Plus className="h-3.5 w-3.5" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0 hover:bg-red-50 hover:text-red-600"
-                                            title="Remove"
-                                            onClick={() => {
-                                              setSelectedHolding({ holding, plan });
-                                              setShowSellUnits(true);
-                                              setSellOrderData({
-                                                units: "",
-                                                dollarAmount: "",
-                                                estimatedProceeds: 0,
-                                                unitsToSell: 0,
-                                              });
-                                            }}
-                                          >
-                                            <Minus className="h-3.5 w-3.5" />
-                                          </Button>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 w-7 p-0 hover:bg-blue-50 hover:text-blue-600"
-                                            title="Switch"
-                                            onClick={() => {
-                                              setSelectedHolding({ holding, plan });
-                                              const currentCompany = getCompanyFromFundName(holding.name);
-                                              setIsConvertMode(false);
-                                              setShowSwitchFund(true);
-                                              setSwitchData({
-                                                units: "",
-                                                selectedCompany: currentCompany,
-                                                selectedFund: "",
-                                                selectedFundSymbol: "",
-                                                estimatedValue: 0,
-                                              });
-                                              setConvertData({
-                                                units: "",
-                                                selectedCompany: "",
-                                                selectedFund: "",
-                                                selectedFundSymbol: "",
-                                                estimatedValue: 0,
-                                              });
-                                              setFundSearchResults([]);
-                                              setShowFundSuggestions(false);
-                                            }}
-                                          >
-                                            <ArrowLeftRight className="h-3.5 w-3.5" />
-                                          </Button>
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </div>
-                            
-                            {/* Plan Summary */}
-                            <div className="mt-4 pt-4 border-t border-gray-200">
-                              <div className="grid grid-cols-3 gap-4">
-                                <div className="text-center">
-                                  <p className="text-xs text-gray-500 mb-1">Net Invested</p>
-                                  <p className="text-base font-semibold text-gray-900">
-                                    {formatCurrency(plan.costBasis)}
-                                  </p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-xs text-gray-500 mb-1">Total Market Value</p>
-                                  <p className="text-base font-semibold text-gray-900">
-                                    {formatCurrency(plan.marketValue)}
-                                  </p>
-                                </div>
-                                <div className="text-center">
-                                  <p className="text-xs text-gray-500 mb-1">Total Book Value</p>
-                                  <p className="text-base font-semibold text-gray-900">
-                                    {formatCurrency(plan.costBasis)}
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {/* Trust Account Cards */}
-                            <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-200">
-                              <Card className="border border-blue-200 bg-blue-50">
-                                <CardContent className="pt-2.5 pb-2.5">
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-medium text-gray-700">Trust Account CAD</span>
-                                    </div>
-                                    <div className="text-sm font-bold text-gray-900">
-                                      {formatCurrency(0)}
-                                    </div>
-                                    <div className="flex gap-2 text-[9px] text-gray-600 pt-1 border-t border-blue-200">
-                                      <span>Settled: {formatCurrency(0)}</span>
-                                      <span>Unsettled: {formatCurrency(0)}</span>
-                                    </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                              <Card className="border border-blue-200 bg-blue-50">
-                                <CardContent className="pt-2.5 pb-2.5">
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-[10px] font-medium text-gray-700">Trust Account USD</span>
-                                    </div>
-                                    <div className="text-sm font-bold text-gray-900">
-                                      {formatCurrency(0)}
-                                    </div>
-                                    <div className="flex gap-2 text-[9px] text-gray-600 pt-1 border-t border-blue-200">
-                                      <span>Settled: {formatCurrency(0)}</span>
-                                      <span>Unsettled: {formatCurrency(0)}</span>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            </div>
-                          </CardContent>
-                        )}
-                      </Card>
-                    );
-                  })}
-                  </div>
-                ) : (
-                <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardContent className="py-8 text-center">
-                      <p className="text-sm text-gray-500">No accounts or holdings available</p>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Documents & Recent Activity Side by Side */}
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Documents & Uploads */}
-                  <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        Documents & Uploads
-                      </CardTitle>
-                      <CardDescription className="text-sm text-gray-500">
-                        Submit suitability and supporting files.
-                      </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                      <div className="rounded-lg border border-dashed border-gray-300 p-6 text-center bg-gray-50">
-                      <UploadCloud className="mx-auto h-8 w-8 text-gray-400" />
-                      <p className="mt-2 text-sm font-medium text-gray-900">
-                        Drag & drop files here
-                      </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                        PDF, DOCX, JPG up to 25 MB
-                      </p>
-                        <Button variant="outline" size="sm" className="mt-3 border-gray-300 text-xs">
-                        Browse files
-                      </Button>
-                    </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full border-gray-300 text-xs"
-                      >
-                      View existing documents
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                  {/* Recent Activity */}
-                <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        Recent Activity
-                      </CardTitle>
-                      <CardDescription className="text-sm text-gray-500">
-                      Latest trades, deposits, and compliance updates.
-                      </CardDescription>
-                  </CardHeader>
-                    <CardContent className="pt-3">
-                      <ScrollArea className="h-48 pr-2">
-                        <div className="space-y-2">
-                        {selectedClient.recentActivity.map((item, index) => (
-                          <div
-                            key={index}
-                              className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 hover:border-gray-200 transition-colors"
-                          >
-                            <p className="text-sm font-medium text-gray-900">
-                              {item.label}
-                            </p>
-                              <span className="text-xs text-gray-500 mt-1 block">
-                              {item.timestamp}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500">No client selected</p>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Edit Client Sheet */}
-      <Sheet open={showEditClient} onOpenChange={setShowEditClient}>
-        <SheetContent side="right" className="!w-[50vw] !max-w-[50vw] overflow-y-auto bg-gray-50">
-          {selectedClient ? (
-            <form onSubmit={handleSaveEdit}>
-              <SheetHeader className="pb-4 border-b border-gray-200">
-                <SheetTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Pencil className="h-5 w-5" />
-                  Edit Client
-                </SheetTitle>
-              </SheetHeader>
-
-              <ScrollArea className="h-[calc(100vh-120px)] pr-4">
-                <div className="mt-6 space-y-5">
-                  {/* 1. Personal and Demographic Information */}
-                  <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        1. Personal and Demographic Information
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-name" className="text-sm font-medium text-gray-700">
-                          Full Name <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="edit-name"
-                          value={editFormValues.name}
-                          onChange={(e) => setEditFormValues({ ...editFormValues, name: e.target.value })}
-                          className="w-full"
-                          required
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-account" className="text-sm font-medium text-gray-700">
-                          Account Number <span className="text-red-500">*</span>
-                        </Label>
-                        <Input
-                          id="edit-account"
-                          value={editFormValues.accountNumber}
-                          onChange={(e) => setEditFormValues({ ...editFormValues, accountNumber: e.target.value })}
-                          className="w-full"
-                          required
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-email" className="text-sm font-medium text-gray-700">
-                            Email
-                          </Label>
-                          <Input
-                            id="edit-email"
-                            type="email"
-                            value={editFormValues.email}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, email: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-phone" className="text-sm font-medium text-gray-700">
-                            Phone
-                          </Label>
-                          <Input
-                            id="edit-phone"
-                            type="tel"
-                            value={editFormValues.phone}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, phone: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-dob" className="text-sm font-medium text-gray-700">
-                            Date of Birth
-                          </Label>
-                          <Input
-                            id="edit-dob"
-                            type="date"
-                            value={editFormValues.dateOfBirth}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, dateOfBirth: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-marital" className="text-sm font-medium text-gray-700">
-                            Marital Status
-                          </Label>
-                          <Select
-                            value={editFormValues.maritalStatus}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, maritalStatus: value })}
-                          >
-                            <SelectTrigger id="edit-marital" className="w-full">
-                              <SelectValue placeholder="Select marital status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Single">Single</SelectItem>
-                              <SelectItem value="Married">Married</SelectItem>
-                              <SelectItem value="Divorced">Divorced</SelectItem>
-                              <SelectItem value="Widowed">Widowed</SelectItem>
-                              <SelectItem value="Common-Law">Common-Law</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-address" className="text-sm font-medium text-gray-700">
-                          Address
-                        </Label>
-                        <Input
-                          id="edit-address"
-                          value={editFormValues.address}
-                          onChange={(e) => setEditFormValues({ ...editFormValues, address: e.target.value })}
-                          className="w-full"
-                          placeholder="Street address"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-city" className="text-sm font-medium text-gray-700">
-                            City
-                          </Label>
-                          <Input
-                            id="edit-city"
-                            value={editFormValues.city}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, city: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-province" className="text-sm font-medium text-gray-700">
-                            Province
-                          </Label>
-                          <Input
-                            id="edit-province"
-                            value={editFormValues.province}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, province: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-postal" className="text-sm font-medium text-gray-700">
-                            Postal Code
-                          </Label>
-                          <Input
-                            id="edit-postal"
-                            value={editFormValues.postalCode}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, postalCode: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-ssn" className="text-sm font-medium text-gray-700">
-                            SSN/TIN
-                          </Label>
-                          <Input
-                            id="edit-ssn"
-                            value={editFormValues.ssnTin}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, ssnTin: e.target.value })}
-                            className="w-full"
-                            placeholder="Social Security Number / Tax ID"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-passport" className="text-sm font-medium text-gray-700">
-                            Passport Number
-                          </Label>
-                          <Input
-                            id="edit-passport"
-                            value={editFormValues.passport}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, passport: e.target.value })}
-                            className="w-full"
-                            placeholder="For non-residents"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-occupation" className="text-sm font-medium text-gray-700">
-                            Occupation
-                          </Label>
-                          <Input
-                            id="edit-occupation"
-                            value={editFormValues.occupation}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, occupation: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-employment" className="text-sm font-medium text-gray-700">
-                            Employment Status
-                          </Label>
-                          <Select
-                            value={editFormValues.employmentStatus}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, employmentStatus: value })}
-                          >
-                            <SelectTrigger id="edit-employment" className="w-full">
-                              <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Employed">Employed</SelectItem>
-                              <SelectItem value="Self-Employed">Self-Employed</SelectItem>
-                              <SelectItem value="Retired">Retired</SelectItem>
-                              <SelectItem value="Unemployed">Unemployed</SelectItem>
-                              <SelectItem value="Student">Student</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-dependents" className="text-sm font-medium text-gray-700">
-                            Number of Dependents
-                          </Label>
-                          <Input
-                            id="edit-dependents"
-                            type="number"
-                            min="0"
-                            value={editFormValues.dependents}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, dependents: e.target.value })}
-                            className="w-full"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-lifestage" className="text-sm font-medium text-gray-700">
-                            Life Stage
-                          </Label>
-                          <Select
-                            value={editFormValues.lifeStage}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, lifeStage: value })}
-                          >
-                            <SelectTrigger id="edit-lifestage" className="w-full">
-                              <SelectValue placeholder="Select life stage" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Young Professional">Young Professional</SelectItem>
-                              <SelectItem value="Mid-Career">Mid-Career</SelectItem>
-                              <SelectItem value="Pre-Retirement">Pre-Retirement</SelectItem>
-                              <SelectItem value="Retiree">Retiree</SelectItem>
-                              <SelectItem value="Estate Planning">Estate Planning</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-tax" className="text-sm font-medium text-gray-700">
-                            Tax Status
-                          </Label>
-                          <Select
-                            value={editFormValues.taxStatus}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, taxStatus: value })}
-                          >
-                            <SelectTrigger id="edit-tax" className="w-full">
-                              <SelectValue placeholder="Select tax status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Resident">Resident</SelectItem>
-                              <SelectItem value="Non-Resident">Non-Resident</SelectItem>
-                              <SelectItem value="Part-Year Resident">Part-Year Resident</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-health" className="text-sm font-medium text-gray-700">
-                            Health Considerations
-                          </Label>
-                          <Input
-                            id="edit-health"
-                            value={editFormValues.healthConsiderations}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, healthConsiderations: e.target.value })}
-                            className="w-full"
-                            placeholder="If relevant to financial planning"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-status" className="text-sm font-medium text-gray-700">
-                          Client Status
-                        </Label>
-                        <Select
-                          value={editFormValues.status}
-                          onValueChange={(value) => setEditFormValues({ ...editFormValues, status: value as ClientStatus })}
-                        >
-                          <SelectTrigger id="edit-status" className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Active">Active</SelectItem>
-                            <SelectItem value="Inactive">Inactive</SelectItem>
-                            <SelectItem value="Prospect">Prospect</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 2. Financial Circumstances and Profile */}
-                  <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        2. Financial Circumstances and Profile
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-annual-income" className="text-sm font-medium text-gray-700">
-                            Annual Income
-                          </Label>
-                          <Input
-                            id="edit-annual-income"
-                            type="number"
-                            value={editFormValues.annualIncome}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, annualIncome: e.target.value })}
-                            className="w-full"
-                            placeholder="$0.00"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-future-income" className="text-sm font-medium text-gray-700">
-                            Expected Future Income
-                          </Label>
-                          <Input
-                            id="edit-future-income"
-                            type="number"
-                            value={editFormValues.expectedFutureIncome}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, expectedFutureIncome: e.target.value })}
-                            className="w-full"
-                            placeholder="$0.00"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-networth" className="text-sm font-medium text-gray-700">
-                            Net Worth
-                          </Label>
-                          <Input
-                            id="edit-networth"
-                            type="number"
-                            value={editFormValues.netWorth}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, netWorth: e.target.value })}
-                            className="w-full"
-                            placeholder="$0.00"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-investable" className="text-sm font-medium text-gray-700">
-                            Investable Funds
-                          </Label>
-                          <Input
-                            id="edit-investable"
-                            type="number"
-                            value={editFormValues.investableFunds}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, investableFunds: e.target.value })}
-                            className="w-full"
-                            placeholder="$0.00"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-assets" className="text-sm font-medium text-gray-700">
-                            Total Assets
-                          </Label>
-                          <Input
-                            id="edit-assets"
-                            type="number"
-                            value={editFormValues.assets}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, assets: e.target.value })}
-                            className="w-full"
-                            placeholder="Real estate, savings, etc."
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-liabilities" className="text-sm font-medium text-gray-700">
-                            Total Liabilities
-                          </Label>
-                          <Input
-                            id="edit-liabilities"
-                            type="number"
-                            value={editFormValues.liabilities}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, liabilities: e.target.value })}
-                            className="w-full"
-                            placeholder="Debts, mortgages, etc."
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-liquidity" className="text-sm font-medium text-gray-700">
-                            Liquidity Needs
-                          </Label>
-                          <Input
-                            id="edit-liquidity"
-                            type="number"
-                            value={editFormValues.liquidityNeeds}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, liquidityNeeds: e.target.value })}
-                            className="w-full"
-                            placeholder="Cash reserves for emergencies"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-cashflow" className="text-sm font-medium text-gray-700">
-                            Cash Flow Patterns
-                          </Label>
-                          <Input
-                            id="edit-cashflow"
-                            value={editFormValues.cashFlowPatterns}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, cashFlowPatterns: e.target.value })}
-                            className="w-full"
-                            placeholder="Additions/withdrawals pattern"
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 3. Investment Objectives and Portfolio Plans */}
-                  <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        3. Investment Objectives and Portfolio Plans
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-objective" className="text-sm font-medium text-gray-700">
-                          Primary Investment Objective
-                        </Label>
-                        <Select
-                          value={editFormValues.primaryObjective}
-                          onValueChange={(value) => setEditFormValues({ ...editFormValues, primaryObjective: value })}
-                        >
-                          <SelectTrigger id="edit-objective" className="w-full">
-                            <SelectValue placeholder="Select primary objective" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Capital Appreciation">Capital Appreciation (Growth Funds)</SelectItem>
-                            <SelectItem value="Income Generation">Income Generation (Bond/Dividend Funds)</SelectItem>
-                            <SelectItem value="Preservation of Capital">Preservation of Capital (Money Market Funds)</SelectItem>
-                            <SelectItem value="Balanced Approach">Balanced Approach</SelectItem>
-                            <SelectItem value="Tax Efficiency">Tax Efficiency</SelectItem>
-                            <SelectItem value="Estate Planning">Estate Planning</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-horizon" className="text-sm font-medium text-gray-700">
-                            Time Horizon
-                          </Label>
-                          <Select
-                            value={editFormValues.timeHorizon}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, timeHorizon: value })}
-                          >
-                            <SelectTrigger id="edit-horizon" className="w-full">
-                              <SelectValue placeholder="Select time horizon" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Short-term (1-5 years)">Short-term (1-5 years)</SelectItem>
-                              <SelectItem value="Medium-term (5-10 years)">Medium-term (5-10 years)</SelectItem>
-                              <SelectItem value="Long-term (10-20 years)">Long-term (10-20 years)</SelectItem>
-                              <SelectItem value="Very Long-term (20+ years)">Very Long-term (20+ years)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-strategy" className="text-sm font-medium text-gray-700">
-                            Investment Strategy
-                          </Label>
-                          <Select
-                            value={editFormValues.investmentStrategy}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, investmentStrategy: value })}
-                          >
-                            <SelectTrigger id="edit-strategy" className="w-full">
-                              <SelectValue placeholder="Select strategy" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Active Management">Active Management</SelectItem>
-                              <SelectItem value="Passive Management">Passive Management</SelectItem>
-                              <SelectItem value="Sector Focus">Sector Focus</SelectItem>
-                              <SelectItem value="ESG Focus">ESG (Environmental, Social, Governance)</SelectItem>
-                              <SelectItem value="International Focus">International Focus</SelectItem>
-                              <SelectItem value="Mixed">Mixed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-allocation" className="text-sm font-medium text-gray-700">
-                          Asset Allocation
-                        </Label>
-                        <Input
-                          id="edit-allocation"
-                          value={editFormValues.assetAllocation}
-                          onChange={(e) => setEditFormValues({ ...editFormValues, assetAllocation: e.target.value })}
-                          className="w-full"
-                          placeholder="e.g., 60% Stocks, 30% Bonds, 10% Cash"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-diversification" className="text-sm font-medium text-gray-700">
-                          Diversification Strategy
-                        </Label>
-                        <Input
-                          id="edit-diversification"
-                          value={editFormValues.diversificationStrategy}
-                          onChange={(e) => setEditFormValues({ ...editFormValues, diversificationStrategy: e.target.value })}
-                          className="w-full"
-                          placeholder="Describe diversification approach"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-rebalancing" className="text-sm font-medium text-gray-700">
-                          Rebalancing Rules
-                        </Label>
-                        <Input
-                          id="edit-rebalancing"
-                          value={editFormValues.rebalancingRules}
-                          onChange={(e) => setEditFormValues({ ...editFormValues, rebalancingRules: e.target.value })}
-                          className="w-full"
-                          placeholder="Frequency and thresholds for rebalancing"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 4. Risk Tolerance and Experience */}
-                  <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        4. Risk Tolerance and Experience
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-risk-profile" className="text-sm font-medium text-gray-700">
-                            Risk Profile
-                          </Label>
-                          <Select
-                            value={editFormValues.riskProfile}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, riskProfile: value })}
-                          >
-                            <SelectTrigger id="edit-risk-profile" className="w-full">
-                              <SelectValue placeholder="Select risk profile" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Conservative">Conservative (Low Risk)</SelectItem>
-                              <SelectItem value="Moderate">Moderate</SelectItem>
-                              <SelectItem value="Aggressive">Aggressive (High Risk)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-risk-attitude" className="text-sm font-medium text-gray-700">
-                            Attitude Toward Risk
-                          </Label>
-                          <Input
-                            id="edit-risk-attitude"
-                            value={editFormValues.riskAttitude}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, riskAttitude: e.target.value })}
-                            className="w-full"
-                            placeholder="Willingness to accept losses, volatility tolerance"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-experience" className="text-sm font-medium text-gray-700">
-                            Investment Experience
-                          </Label>
-                          <Select
-                            value={editFormValues.investmentExperience}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, investmentExperience: value })}
-                          >
-                            <SelectTrigger id="edit-experience" className="w-full">
-                              <SelectValue placeholder="Select experience level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Novice">Novice</SelectItem>
-                              <SelectItem value="Beginner">Beginner</SelectItem>
-                              <SelectItem value="Intermediate">Intermediate</SelectItem>
-                              <SelectItem value="Advanced">Advanced</SelectItem>
-                              <SelectItem value="Sophisticated">Sophisticated</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-years" className="text-sm font-medium text-gray-700">
-                            Years Investing
-                          </Label>
-                          <Input
-                            id="edit-years"
-                            type="number"
-                            min="0"
-                            value={editFormValues.yearsInvesting}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, yearsInvesting: e.target.value })}
-                            className="w-full"
-                            placeholder="Number of years"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-knowledge" className="text-sm font-medium text-gray-700">
-                          Knowledge Level
-                        </Label>
-                        <Input
-                          id="edit-knowledge"
-                          value={editFormValues.knowledgeLevel}
-                          onChange={(e) => setEditFormValues({ ...editFormValues, knowledgeLevel: e.target.value })}
-                          className="w-full"
-                          placeholder="Familiarity with mutual funds and investments"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* 5. Beneficiaries and Account Relationship Factors */}
-                  <Card className="border border-gray-200 shadow-sm bg-white">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base font-semibold text-gray-900">
-                        5. Beneficiaries and Account Relationship Factors
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-beneficiary" className="text-sm font-medium text-gray-700">
-                            Primary Beneficiary
-                          </Label>
-                          <Input
-                            id="edit-beneficiary"
-                            value={editFormValues.beneficiary}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, beneficiary: e.target.value })}
-                            className="w-full"
-                            placeholder="Primary beneficiary name"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-contingent" className="text-sm font-medium text-gray-700">
-                            Contingent Beneficiary
-                          </Label>
-                          <Input
-                            id="edit-contingent"
-                            value={editFormValues.contingentBeneficiary}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, contingentBeneficiary: e.target.value })}
-                            className="w-full"
-                            placeholder="Contingent beneficiary name"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-account-type" className="text-sm font-medium text-gray-700">
-                            Account Type
-                          </Label>
-                          <Select
-                            value={editFormValues.accountType}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, accountType: value })}
-                          >
-                            <SelectTrigger id="edit-account-type" className="w-full">
-                              <SelectValue placeholder="Select account type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Individual">Individual</SelectItem>
-                              <SelectItem value="Joint">Joint (with rights of survivorship)</SelectItem>
-                              <SelectItem value="Trust">Trust</SelectItem>
-                              <SelectItem value="Custodial">Custodial (for minors)</SelectItem>
-                              <SelectItem value="Business">Business</SelectItem>
-                              <SelectItem value="IRA">IRA</SelectItem>
-                              <SelectItem value="401k">401(k)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-ownership" className="text-sm font-medium text-gray-700">
-                            Account Ownership
-                          </Label>
-                          <Input
-                            id="edit-ownership"
-                            value={editFormValues.accountOwnership}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, accountOwnership: e.target.value })}
-                            className="w-full"
-                            placeholder="Ownership details"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-relationship" className="text-sm font-medium text-gray-700">
-                            Relationship Roles
-                          </Label>
-                          <Input
-                            id="edit-relationship"
-                            value={editFormValues.relationshipRoles}
-                            onChange={(e) => setEditFormValues({ ...editFormValues, relationshipRoles: e.target.value })}
-                            className="w-full"
-                            placeholder="POA, trustee, proxy voting preferences"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="edit-client-type" className="text-sm font-medium text-gray-700">
-                            Client Type
-                          </Label>
-                          <Select
-                            value={editFormValues.clientType}
-                            onValueChange={(value) => setEditFormValues({ ...editFormValues, clientType: value })}
-                          >
-                            <SelectTrigger id="edit-client-type" className="w-full">
-                              <SelectValue placeholder="Select client type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Individual">Individual</SelectItem>
-                              <SelectItem value="Pension Fund">Pension Fund</SelectItem>
-                              <SelectItem value="Family Office">Family Office</SelectItem>
-                              <SelectItem value="Institution">Institution</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                {/* Form Error */}
-                {formError && (
-                  <div className="rounded-lg bg-red-50 border border-red-200 p-3">
-                    <p className="text-sm text-red-600">{formError}</p>
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowEditClient(false)}
-                    className="border-gray-300"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="bg-gray-900 text-white hover:bg-gray-800"
-                  >
-                    Save Changes
-                  </Button>
-                </div>
-                </div>
-              </ScrollArea>
-            </form>
-          ) : (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-gray-500">No client selected</p>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Upload Documents Sheet */}
+      {/* Disabled Sheet components removed - using inline panels instead */}
+      {/* Upload Documents Sheet - Disabled, using inline panel instead */}
+      {false && (
       <Sheet open={showUploadDocs} onOpenChange={setShowUploadDocs}>
         <SheetContent side="right" className="!w-[50vw] !max-w-[50vw] overflow-y-auto bg-gray-50">
           {selectedClient ? (
@@ -3462,6 +3328,7 @@ const Clients = () => {
           )}
         </SheetContent>
       </Sheet>
+      )}
 
       <Dialog
         open={showAddClient}

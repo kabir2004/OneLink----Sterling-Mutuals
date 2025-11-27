@@ -26,8 +26,73 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Loader2, Plus, Eye, Pencil, Search, ChevronDown, ChevronUp, Minus, ArrowLeftRight, X, CheckCircle2, ChevronLeft, ChevronRight, Sparkles, ArrowLeft } from "lucide-react";
+import { Loader2, Plus, Eye, Pencil, Search, ChevronDown, ChevronUp, Minus, ArrowLeftRight, X, CheckCircle2, ChevronLeft, ChevronRight, Sparkles, ArrowLeft, UploadCloud } from "lucide-react";
 import { fundsData } from "@/data/fundsData";
+
+type Fund = {
+  symbol: string;
+  name: string;
+  company: string;
+  category?: string;
+};
+
+// Fund database with companies and their funds
+const FUND_DATABASE: Fund[] = [
+  // Fidelity Funds
+  { symbol: "FID001", name: "FIDELITY NORTHSTAR FUND", company: "Fidelity", category: "Equity" },
+  { symbol: "FID002", name: "Fidelity Monthly Income Fund - Series B ISC", company: "Fidelity", category: "Income" },
+  { symbol: "FID003", name: "Fidelity Canadian Growth Fund", company: "Fidelity", category: "Equity" },
+  { symbol: "FID004", name: "Fidelity Global Equity Fund", company: "Fidelity", category: "Equity" },
+  { symbol: "FID005", name: "Fidelity Balanced Fund", company: "Fidelity", category: "Balanced" },
+  { symbol: "FID006", name: "Fidelity Dividend Fund", company: "Fidelity", category: "Income" },
+  { symbol: "FID007", name: "Fidelity International Equity Fund", company: "Fidelity", category: "Equity" },
+  { symbol: "FID008", name: "Fidelity Bond Fund", company: "Fidelity", category: "Fixed Income" },
+  
+  // TD Asset Management Funds
+  { symbol: "TD001", name: "TD Monthly Income Fund - Series A", company: "TD Asset Management", category: "Income" },
+  { symbol: "TD002", name: "TD Canadian Equity Fund", company: "TD Asset Management", category: "Equity" },
+  { symbol: "TD003", name: "TD Balanced Growth Fund", company: "TD Asset Management", category: "Balanced" },
+  { symbol: "TD004", name: "TD Global Equity Fund", company: "TD Asset Management", category: "Equity" },
+  { symbol: "TD005", name: "TD Dividend Growth Fund", company: "TD Asset Management", category: "Equity" },
+  { symbol: "TD006", name: "TD Canadian Bond Fund", company: "TD Asset Management", category: "Fixed Income" },
+  { symbol: "TD007", name: "TD International Equity Fund", company: "TD Asset Management", category: "Equity" },
+  { symbol: "TD008", name: "TD Money Market Fund", company: "TD Asset Management", category: "Money Market" },
+  
+  // Vanguard Funds
+  { symbol: "VAN001", name: "Vanguard S&P 500 Index ETF", company: "Vanguard", category: "Equity" },
+  { symbol: "VAN002", name: "Vanguard FTSE Canada All Cap Index ETF", company: "Vanguard", category: "Equity" },
+  { symbol: "VAN003", name: "Vanguard Canadian Aggregate Bond Index ETF", company: "Vanguard", category: "Fixed Income" },
+  { symbol: "VAN004", name: "Vanguard Global Equity Index ETF", company: "Vanguard", category: "Equity" },
+  { symbol: "VAN005", name: "Vanguard Balanced ETF Portfolio", company: "Vanguard", category: "Balanced" },
+  
+  // iShares Funds
+  { symbol: "ISH001", name: "iShares Core S&P/TSX Capped Composite Index ETF", company: "iShares", category: "Equity" },
+  { symbol: "ISH002", name: "iShares Core MSCI All Country World ex Canada Index ETF", company: "iShares", category: "Equity" },
+  { symbol: "ISH003", name: "iShares Canadian Corporate Bond Index ETF", company: "iShares", category: "Fixed Income" },
+  { symbol: "ISH004", name: "iShares S&P 500 Index ETF", company: "iShares", category: "Equity" },
+  
+  // BMO Funds
+  { symbol: "BMO001", name: "BMO Aggregate Bond Index ETF", company: "BMO", category: "Fixed Income" },
+  { symbol: "BMO002", name: "BMO Canadian Equity Fund", company: "BMO", category: "Equity" },
+  { symbol: "BMO003", name: "BMO Global Equity Fund", company: "BMO", category: "Equity" },
+  { symbol: "BMO004", name: "BMO Balanced Fund", company: "BMO", category: "Balanced" },
+  
+  // RBC Funds
+  { symbol: "RBC001", name: "RBC Canadian Equity Fund", company: "RBC", category: "Equity" },
+  { symbol: "RBC002", name: "RBC Global Equity Fund", company: "RBC", category: "Equity" },
+  { symbol: "RBC003", name: "RBC Balanced Fund", company: "RBC", category: "Balanced" },
+  { symbol: "RBC004", name: "RBC Bond Fund", company: "RBC", category: "Fixed Income" },
+  
+  // CIBC Funds
+  { symbol: "CIBC001", name: "CIBC Canadian Equity Fund", company: "CIBC", category: "Equity" },
+  { symbol: "CIBC002", name: "CIBC Global Equity Fund", company: "CIBC", category: "Equity" },
+  { symbol: "CIBC003", name: "CIBC Balanced Fund", company: "CIBC", category: "Balanced" },
+  
+  // Scotia Funds
+  { symbol: "SCOT001", name: "Scotia Canadian Equity Fund", company: "Scotia", category: "Equity" },
+  { symbol: "SCOT002", name: "Scotia Global Equity Fund", company: "Scotia", category: "Equity" },
+  { symbol: "SCOT003", name: "Scotia Balanced Fund", company: "Scotia", category: "Balanced" },
+];
 
 type PlanType = "OPEN" | "RRSP" | "RESP" | "TFSA" | "RRIF" | "Non-Registered" | "LIRA" | "LIF" | "RDSP";
 type PlanStatus = "Active" | "Inactive" | "Closed";
@@ -2380,7 +2445,6 @@ export default function Plans() {
   };
   
   const [typeFilter, setTypeFilter] = useState<Set<PlanType>>(getInitialTypeFilter());
-  const [statusFilter, setStatusFilter] = useState<Set<PlanStatus>>(new Set());
   
   // Update filter when URL changes
   useEffect(() => {
@@ -2404,6 +2468,100 @@ export default function Plans() {
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [selectedFundCompany, setSelectedFundCompany] = useState("");
   const [investmentAmount, setInvestmentAmount] = useState("");
+  
+  // Buy/Sell/Switch dialog states
+  const [showBuyUnits, setShowBuyUnits] = useState(false);
+  const [showSellUnits, setShowSellUnits] = useState(false);
+  const [showSwitchFund, setShowSwitchFund] = useState(false);
+  const [showConvertFund, setShowConvertFund] = useState(false);
+  const [isConvertMode, setIsConvertMode] = useState(false);
+  const [showOrderConfirmation, setShowOrderConfirmation] = useState(false);
+  const [showSellOrderConfirmation, setShowSellOrderConfirmation] = useState(false);
+  const [showSwitchConfirmation, setShowSwitchConfirmation] = useState(false);
+  const [showConvertConfirmation, setShowConvertConfirmation] = useState(false);
+  const [selectedHolding, setSelectedHolding] = useState<{ holding: Holding; plan: Plan } | null>(null);
+  
+  const [buyOrderData, setBuyOrderData] = useState<{
+    investmentAmount: string;
+    units: string;
+    estimatedCost: number;
+    unitsToPurchase: number;
+  }>({
+    investmentAmount: "",
+    units: "",
+    estimatedCost: 0,
+    unitsToPurchase: 0,
+  });
+  
+  const [sellOrderData, setSellOrderData] = useState<{
+    units: string;
+    dollarAmount: string;
+    estimatedProceeds: number;
+    unitsToSell: number;
+  }>({
+    units: "",
+    dollarAmount: "",
+    estimatedProceeds: 0,
+    unitsToSell: 0,
+  });
+  
+  const [switchData, setSwitchData] = useState<{
+    units: string;
+    selectedCompany: string;
+    selectedFund: string;
+    selectedFundSymbol?: string;
+    estimatedValue: number;
+  }>({
+    units: "",
+    selectedCompany: "",
+    selectedFund: "",
+    selectedFundSymbol: "",
+    estimatedValue: 0,
+  });
+  
+  const [convertData, setConvertData] = useState<{
+    units: string;
+    selectedCompany: string;
+    selectedFund: string;
+    selectedFundSymbol?: string;
+    estimatedValue: number;
+  }>({
+    units: "",
+    selectedCompany: "",
+    selectedFund: "",
+    selectedFundSymbol: "",
+    estimatedValue: 0,
+  });
+  
+  const [orderConfirmationData, setOrderConfirmationData] = useState<{
+    symbol: string;
+    name: string;
+    units: number;
+    price: number;
+    totalCost: number;
+  } | null>(null);
+  
+  const [sellOrderConfirmationData, setSellOrderConfirmationData] = useState<{
+    symbol: string;
+    name: string;
+    units: number;
+    price: number;
+    totalProceeds: number;
+  } | null>(null);
+  
+  const [switchConfirmationData, setSwitchConfirmationData] = useState<{
+    fromFund: string;
+    toFund: string;
+    units: number;
+    estimatedValue: number;
+  } | null>(null);
+  
+  const [convertConfirmationData, setConvertConfirmationData] = useState<{
+    fromFund: string;
+    toFund: string;
+    units: number;
+    estimatedValue: number;
+  } | null>(null);
 
   const [formValues, setFormValues] = useState({
     type: "" as PlanType | "",
@@ -2432,7 +2590,6 @@ export default function Plans() {
     accountNumber: "",
     clientId: "",
     clientName: "",
-    status: "Active" as PlanStatus,
     openedDate: "",
     contributionRoom: "",
     contributionUsed: "",
@@ -2447,11 +2604,10 @@ export default function Plans() {
         plan.type.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesType = typeFilter.size === 0 || typeFilter.has(plan.type);
-      const matchesStatus = statusFilter.size === 0 || statusFilter.has(plan.status);
 
-      return matchesSearch && matchesType && matchesStatus;
+      return matchesSearch && matchesType;
     });
-  }, [plans, searchQuery, typeFilter, statusFilter]);
+  }, [plans, searchQuery, typeFilter]);
 
   const toggleTypeFilter = (type: PlanType) => {
     setTypeFilter((prev) => {
@@ -2465,17 +2621,6 @@ export default function Plans() {
     });
   };
 
-  const toggleStatusFilter = (status: PlanStatus) => {
-    setStatusFilter((prev) => {
-      const next = new Set(prev);
-      if (next.has(status)) {
-        next.delete(status);
-      } else {
-        next.add(status);
-      }
-      return next;
-    });
-  };
 
   const resetForm = () => {
     setFormValues({
@@ -2620,7 +2765,6 @@ export default function Plans() {
         accountNumber: plan.accountNumber,
         clientId: plan.clientId,
         clientName: plan.clientName,
-        status: plan.status,
         openedDate: plan.openedDate,
         contributionRoom: plan.contributionRoom?.toString() || "",
         contributionUsed: plan.contributionUsed?.toString() || "",
@@ -2673,8 +2817,31 @@ export default function Plans() {
     });
   };
 
-  const statusOptions: PlanStatus[] = ["Active", "Inactive", "Closed"];
-  
+  // Helper function to get company from fund name
+  const getCompanyFromFundName = (fundName: string): string => {
+    // First try to find in fund database
+    const fund = FUND_DATABASE.find(f => 
+      f.name.toUpperCase() === fundName.toUpperCase() ||
+      fundName.toUpperCase().includes(f.name.toUpperCase()) ||
+      f.name.toUpperCase().includes(fundName.toUpperCase())
+    );
+    if (fund) return fund.company;
+    
+    // Fallback to pattern matching
+    const name = fundName.toUpperCase();
+    if (name.includes("FIDELITY")) return "Fidelity";
+    if (name.includes("TD")) return "TD Asset Management";
+    if (name.includes("VANGUARD")) return "Vanguard";
+    if (name.includes("ISHARES")) return "iShares";
+    if (name.includes("BMO")) return "BMO";
+    if (name.includes("RBC")) return "RBC";
+    if (name.includes("CIBC")) return "CIBC";
+    if (name.includes("SCOTIA")) return "Scotia";
+    // Default extraction - try to get first word or common pattern
+    const words = fundName.split(" ");
+    return words[0] || "Unknown";
+  };
+
   // Get unique fund companies from fundsData
   const fundCompanies = useMemo(() => {
     const companies = new Set<string>();
@@ -2685,12 +2852,6 @@ export default function Plans() {
     });
     return Array.from(companies).sort();
   }, []);
-
-  const statusBadgeStyles: Record<PlanStatus, string> = {
-    Active: "bg-green-100 text-green-700",
-    Inactive: "bg-yellow-100 text-yellow-700",
-    Closed: "bg-gray-100 text-gray-700",
-  };
 
   const planTypeBadgeStyles: Record<PlanType, string> = {
     OPEN: "bg-blue-100 text-blue-700",
@@ -2765,39 +2926,6 @@ export default function Plans() {
                       </div>
                     </PopoverContent>
                   </Popover>
-
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-[150px] justify-between text-sm font-normal"
-                      >
-                        {statusFilter.size === 0
-                          ? "All Statuses"
-                          : statusFilter.size === 1
-                          ? Array.from(statusFilter)[0]
-                          : `${statusFilter.size} selected`}
-                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[150px] p-2" align="start">
-                      <div className="space-y-1">
-                        {statusOptions.map((status) => (
-                          <label
-                            key={status}
-                            className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-100 rounded cursor-pointer"
-                          >
-                            <Checkbox
-                              checked={statusFilter.has(status)}
-                              onCheckedChange={() => toggleStatusFilter(status)}
-                              className="h-4 w-4"
-                            />
-                            <span>{status}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </PopoverContent>
-                  </Popover>
                 </div>
 
                 <Button
@@ -2852,7 +2980,6 @@ export default function Plans() {
                         <TableHead className="text-center">Account Number</TableHead>
                         <TableHead className="text-center">Plan Type</TableHead>
                         <TableHead className="text-center">Client</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
                         <TableHead className="text-center">Market Value</TableHead>
                         <TableHead className="text-center">Holdings</TableHead>
                         <TableHead className="text-center">Actions</TableHead>
@@ -2873,13 +3000,6 @@ export default function Plans() {
                           </TableCell>
                           <TableCell className="text-center text-sm text-gray-700">
                             {plan.clientName}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <span
-                              className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${statusBadgeStyles[plan.status]}`}
-                            >
-                              {plan.status}
-                            </span>
                           </TableCell>
                           <TableCell className="text-center text-sm font-medium text-gray-900">
                             {formatCurrency(plan.marketValue)}
@@ -2953,15 +3073,6 @@ export default function Plans() {
                                   >
                                     {selectedPlan.type}
                                   </span>
-                                </div>
-                                <div>
-                                  <p className="text-xs text-gray-500 mb-1">Status</p>
-                                  <Badge
-                                    variant="outline"
-                                    className={statusBadgeStyles[selectedPlan.status]}
-                                  >
-                                    {selectedPlan.status}
-                                  </Badge>
                                 </div>
                                 <div>
                                   <p className="text-xs text-gray-500 mb-1">Client</p>
@@ -3077,7 +3188,17 @@ export default function Plans() {
                                               variant="ghost"
                                               size="sm"
                                               className="h-6 w-6 p-0"
-                                              title="Add"
+                                              title="Buy more units"
+                                              onClick={() => {
+                                                setSelectedHolding({ holding, plan: selectedPlan });
+                                                setBuyOrderData({
+                                                  investmentAmount: "",
+                                                  units: "",
+                                                  estimatedCost: 0,
+                                                  unitsToPurchase: 0,
+                                                });
+                                                setShowBuyUnits(true);
+                                              }}
                                             >
                                               <Plus className="h-3 w-3 text-gray-600" />
                                             </Button>
@@ -3085,7 +3206,17 @@ export default function Plans() {
                                               variant="ghost"
                                               size="sm"
                                               className="h-6 w-6 p-0"
-                                              title="Remove"
+                                              title="Sell units"
+                                              onClick={() => {
+                                                setSelectedHolding({ holding, plan: selectedPlan });
+                                                setSellOrderData({
+                                                  units: "",
+                                                  dollarAmount: "",
+                                                  estimatedProceeds: 0,
+                                                  unitsToSell: 0,
+                                                });
+                                                setShowSellUnits(true);
+                                              }}
                                             >
                                               <Minus className="h-3 w-3 text-gray-600" />
                                             </Button>
@@ -3094,6 +3225,25 @@ export default function Plans() {
                                               size="sm"
                                               className="h-6 w-6 p-0"
                                               title="Switch/Conversion"
+                                              onClick={() => {
+                                                setSelectedHolding({ holding, plan: selectedPlan });
+                                                setSwitchData({
+                                                  units: "",
+                                                  selectedCompany: "",
+                                                  selectedFund: "",
+                                                  selectedFundSymbol: "",
+                                                  estimatedValue: 0,
+                                                });
+                                                setConvertData({
+                                                  units: "",
+                                                  selectedCompany: "",
+                                                  selectedFund: "",
+                                                  selectedFundSymbol: "",
+                                                  estimatedValue: 0,
+                                                });
+                                                setIsConvertMode(false);
+                                                setShowSwitchFund(true);
+                                              }}
                                             >
                                               <ArrowLeftRight className="h-3 w-3 text-gray-600" />
                                             </Button>
@@ -3207,27 +3357,6 @@ export default function Plans() {
                                     }
                                     className="h-9 text-sm"
                                   />
-                                </div>
-
-                                <div className="space-y-2">
-                                  <Label htmlFor="edit-status" className="text-xs">Status</Label>
-                                  <Select
-                                    value={editFormValues.status}
-                                    onValueChange={(value) =>
-                                      setEditFormValues({ ...editFormValues, status: value as PlanStatus })
-                                    }
-                                  >
-                                    <SelectTrigger className="h-9 text-sm">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {statusOptions.map((status) => (
-                                        <SelectItem key={status} value={status}>
-                                          {status}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
                                 </div>
 
                                 <div className="space-y-2">
@@ -3721,6 +3850,1040 @@ export default function Plans() {
                 </DialogFooter>
               </div>
             ) : null}
+          </DialogContent>
+        </Dialog>
+
+        {/* Buy More Units Dialog */}
+        <Dialog open={showBuyUnits} onOpenChange={setShowBuyUnits}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-green-600">
+                <Plus className="h-5 w-5 text-green-600" />
+                Buy More Units
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                Purchase additional units of {selectedHolding?.holding.name || ""}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedHolding && (
+              <div className="space-y-6 py-4">
+                {/* Account Balance */}
+                <Card className="border border-blue-200 bg-blue-50">
+                  <CardContent className="pt-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Account Balance</span>
+                        <span className="text-sm font-semibold text-blue-700">
+                          {selectedHolding.plan.type} CAD
+                        </span>
+                      </div>
+                      <div className="text-2xl font-bold text-gray-900">
+                        {formatCurrency(selectedHolding.plan.marketValue)}
+                      </div>
+                      <div className="flex gap-4 text-xs text-gray-600 pt-2 border-t border-blue-200">
+                        <span>Settled: {formatCurrency(selectedHolding.plan.marketValue)}</span>
+                        <span>Unsettled: {formatCurrency(0)}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Current Holdings */}
+                <Card className="border border-gray-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold text-gray-900">
+                      Current Holdings ({selectedHolding.plan.type})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Units</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {selectedHolding.holding.shares.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Price</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(selectedHolding.holding.price)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Market Value</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(selectedHolding.holding.marketValue)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Investment Input */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="investmentAmount" className="text-sm font-medium text-gray-700">
+                      Investment Amount ($)
+                    </Label>
+                    <Input
+                      id="investmentAmount"
+                      type="number"
+                      placeholder="Enter amount to invest"
+                      value={buyOrderData.investmentAmount}
+                      onChange={(e) => {
+                        const amount = e.target.value;
+                        setBuyOrderData({
+                          ...buyOrderData,
+                          investmentAmount: amount,
+                          units: amount
+                            ? (
+                                parseFloat(amount) / selectedHolding.holding.price
+                              ).toFixed(4)
+                            : "",
+                          estimatedCost: amount ? parseFloat(amount) : 0,
+                          unitsToPurchase: amount
+                            ? parseFloat(amount) / selectedHolding.holding.price
+                            : 0,
+                        });
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="units" className="text-sm font-medium text-gray-700">
+                      Or Number of Units
+                    </Label>
+                    <Input
+                      id="units"
+                      type="number"
+                      step="0.0001"
+                      placeholder="Enter number of units"
+                      value={buyOrderData.units}
+                      onChange={(e) => {
+                        const units = e.target.value;
+                        const unitsNum = parseFloat(units) || 0;
+                        setBuyOrderData({
+                          ...buyOrderData,
+                          units: units,
+                          investmentAmount: unitsNum
+                            ? (unitsNum * selectedHolding.holding.price).toFixed(2)
+                            : "",
+                          estimatedCost: unitsNum * selectedHolding.holding.price,
+                          unitsToPurchase: unitsNum,
+                        });
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Estimated Cost */}
+                <Card className="border border-blue-200 bg-blue-50">
+                  <CardContent className="pt-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Estimated Cost</span>
+                        <span className="text-lg font-bold text-gray-900">
+                          {formatCurrency(buyOrderData.estimatedCost)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>Units to purchase:</span>
+                        <span className="font-medium">
+                          {buyOrderData.unitsToPurchase.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 pt-2 border-t border-blue-200">
+                        Based on avg. cost {formatCurrency(selectedHolding.holding.price)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowBuyUnits(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedHolding && buyOrderData.estimatedCost > 0) {
+                    setOrderConfirmationData({
+                      symbol: selectedHolding.holding.symbol,
+                      name: selectedHolding.holding.name,
+                      units: buyOrderData.unitsToPurchase,
+                      price: selectedHolding.holding.price,
+                      totalCost: buyOrderData.estimatedCost,
+                    });
+                    setShowBuyUnits(false);
+                    setShowOrderConfirmation(true);
+                  }
+                }}
+                disabled={buyOrderData.estimatedCost === 0}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Place Buy Order
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Order Confirmation Dialog */}
+        <Dialog open={showOrderConfirmation} onOpenChange={setShowOrderConfirmation}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center justify-center mb-4">
+                <div className="rounded-full bg-green-100 p-3">
+                  <CheckCircle2 className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+              <DialogTitle className="text-center text-xl font-semibold text-gray-900">
+                Order Confirmation
+              </DialogTitle>
+              <DialogDescription className="text-center text-sm text-gray-600">
+                Your buy order has been placed successfully
+              </DialogDescription>
+            </DialogHeader>
+
+            {orderConfirmationData && (
+              <div className="space-y-4 py-4">
+                <Card className="border border-gray-200">
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Product</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {orderConfirmationData.symbol} - {orderConfirmationData.name}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Units</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {orderConfirmationData.units.toFixed(4)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Price per Unit</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatCurrency(orderConfirmationData.price)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Total Cost</span>
+                          <span className="text-lg font-bold text-gray-900">
+                            {formatCurrency(orderConfirmationData.totalCost)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setShowOrderConfirmation(false);
+                  setOrderConfirmationData(null);
+                  setBuyOrderData({
+                    investmentAmount: "",
+                    units: "",
+                    estimatedCost: 0,
+                    unitsToPurchase: 0,
+                  });
+                }}
+                className="w-full bg-gray-900 hover:bg-gray-800"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sell Units Dialog */}
+        <Dialog open={showSellUnits} onOpenChange={setShowSellUnits}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-semibold text-red-600">
+                <Minus className="h-5 w-5 text-red-600" />
+                Sell Units
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                Sell units of {selectedHolding?.holding.name || ""}
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedHolding && (
+              <div className="space-y-6 py-4">
+                {/* Current Holdings */}
+                <Card className="border border-gray-200 bg-gray-50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold text-gray-900">
+                      Current Holdings ({selectedHolding.plan.type})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Units Available</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {selectedHolding.holding.shares.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Price</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(selectedHolding.holding.price)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Market Value</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(selectedHolding.holding.marketValue)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Sell Input */}
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="sellUnits" className="text-sm font-medium text-gray-700">
+                      Number of Units to Sell
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="sellUnits"
+                        type="number"
+                        step="0.0001"
+                        placeholder={`Max: ${selectedHolding.holding.shares.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`}
+                        value={sellOrderData.units}
+                        onChange={(e) => {
+                          const units = e.target.value;
+                          const unitsNum = parseFloat(units) || 0;
+                          const maxUnits = selectedHolding.holding.shares;
+                          const validUnits = unitsNum > maxUnits ? maxUnits : unitsNum;
+                          setSellOrderData({
+                            ...sellOrderData,
+                            units: units,
+                            dollarAmount: validUnits
+                              ? (validUnits * selectedHolding.holding.price).toFixed(2)
+                              : "",
+                            estimatedProceeds: validUnits * selectedHolding.holding.price,
+                            unitsToSell: validUnits,
+                          });
+                        }}
+                        className="w-full pr-20"
+                        max={selectedHolding.holding.shares}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = parseFloat(sellOrderData.units) || 0;
+                            const newValue = Math.min(current + 1, selectedHolding.holding.shares);
+                            setSellOrderData({
+                              ...sellOrderData,
+                              units: newValue.toString(),
+                              dollarAmount: (newValue * selectedHolding.holding.price).toFixed(2),
+                              estimatedProceeds: newValue * selectedHolding.holding.price,
+                              unitsToSell: newValue,
+                            });
+                          }}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = parseFloat(sellOrderData.units) || 0;
+                            const newValue = Math.max(current - 1, 0);
+                            setSellOrderData({
+                              ...sellOrderData,
+                              units: newValue > 0 ? newValue.toString() : "",
+                              dollarAmount: newValue > 0 ? (newValue * selectedHolding.holding.price).toFixed(2) : "",
+                              estimatedProceeds: newValue * selectedHolding.holding.price,
+                              unitsToSell: newValue,
+                            });
+                          }}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="sellDollarAmount" className="text-sm font-medium text-gray-700">
+                      Or Dollar Amount ($)
+                    </Label>
+                    <Input
+                      id="sellDollarAmount"
+                      type="number"
+                      placeholder="Enter dollar amount"
+                      value={sellOrderData.dollarAmount}
+                      onChange={(e) => {
+                        const amount = e.target.value;
+                        const amountNum = parseFloat(amount) || 0;
+                        const maxAmount = selectedHolding.holding.marketValue;
+                        const validAmount = amountNum > maxAmount ? maxAmount : amountNum;
+                        const unitsFromAmount = validAmount / selectedHolding.holding.price;
+                        setSellOrderData({
+                          ...sellOrderData,
+                          dollarAmount: amount,
+                          units: validAmount > 0 ? unitsFromAmount.toFixed(4) : "",
+                          estimatedProceeds: validAmount,
+                          unitsToSell: unitsFromAmount,
+                        });
+                      }}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
+                {/* Estimated Proceeds */}
+                <Card className="border border-yellow-200 bg-yellow-50">
+                  <CardContent className="pt-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">Estimated Proceeds</span>
+                        <span className="text-lg font-bold text-gray-900">
+                          {formatCurrency(sellOrderData.estimatedProceeds)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-gray-600">
+                        <span>Units to sell:</span>
+                        <span className="font-medium">
+                          {sellOrderData.unitsToSell.toFixed(4)}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 pt-2 border-t border-yellow-200">
+                        Before fees and taxes • Based on avg. cost {formatCurrency(selectedHolding.holding.price)}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowSellUnits(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedHolding && sellOrderData.estimatedProceeds > 0) {
+                    setSellOrderConfirmationData({
+                      symbol: selectedHolding.holding.symbol,
+                      name: selectedHolding.holding.name,
+                      units: sellOrderData.unitsToSell,
+                      price: selectedHolding.holding.price,
+                      totalProceeds: sellOrderData.estimatedProceeds,
+                    });
+                    setShowSellUnits(false);
+                    setShowSellOrderConfirmation(true);
+                  }
+                }}
+                disabled={sellOrderData.estimatedProceeds === 0}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                Place Sell Order
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Sell Order Confirmation Dialog */}
+        <Dialog open={showSellOrderConfirmation} onOpenChange={setShowSellOrderConfirmation}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center justify-center mb-4">
+                <div className="rounded-full bg-red-100 p-3">
+                  <CheckCircle2 className="h-8 w-8 text-red-600" />
+                </div>
+              </div>
+              <DialogTitle className="text-center text-xl font-semibold text-gray-900">
+                Order Confirmation
+              </DialogTitle>
+              <DialogDescription className="text-center text-sm text-gray-600">
+                Your sell order has been placed successfully
+              </DialogDescription>
+            </DialogHeader>
+
+            {sellOrderConfirmationData && (
+              <div className="space-y-4 py-4">
+                <Card className="border border-gray-200">
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Product</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {sellOrderConfirmationData.symbol} - {sellOrderConfirmationData.name}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Units</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {sellOrderConfirmationData.units.toFixed(4)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Price per Unit</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatCurrency(sellOrderConfirmationData.price)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">Total Proceeds</span>
+                          <span className="text-lg font-bold text-gray-900">
+                            {formatCurrency(sellOrderConfirmationData.totalProceeds)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setShowSellOrderConfirmation(false);
+                  setSellOrderConfirmationData(null);
+                  setSellOrderData({
+                    units: "",
+                    dollarAmount: "",
+                    estimatedProceeds: 0,
+                    unitsToSell: 0,
+                  });
+                }}
+                className="w-full bg-gray-900 hover:bg-gray-800"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Switch/Convert Fund Dialog */}
+        <Dialog open={showSwitchFund || showConvertFund} onOpenChange={(open) => {
+          if (!open) {
+            setShowSwitchFund(false);
+            setShowConvertFund(false);
+            setIsConvertMode(false);
+          }
+        }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle className={`flex items-center gap-2 text-xl font-semibold ${isConvertMode ? "text-orange-600" : "text-blue-600"}`}>
+                <ArrowLeftRight className={`h-5 w-5 ${isConvertMode ? "text-orange-600" : "text-blue-600"}`} />
+                {isConvertMode ? "Convert Fund" : "Switch Fund"}
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-600">
+                {isConvertMode 
+                  ? `Convert from ${selectedHolding?.holding.name || ""} (${selectedHolding && getCompanyFromFundName(selectedHolding.holding.name)}) to a ${convertData.selectedCompany || "different company"} fund`
+                  : `Switch from ${selectedHolding?.holding.name || ""} to another ${selectedHolding && getCompanyFromFundName(selectedHolding.holding.name)} fund`
+                }
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedHolding && (
+              <div className="space-y-6 py-4">
+                {/* Current Fund */}
+                <Card className="border border-gray-200 bg-gray-50">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold text-gray-900">
+                      Current Fund ({selectedHolding.plan.type})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900 mb-1">
+                        {selectedHolding.holding.name}
+                      </p>
+                      <p className="text-xs text-gray-600">Company: {getCompanyFromFundName(selectedHolding.holding.name)}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Units Available</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {selectedHolding.holding.shares.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">Market Value</p>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatCurrency(selectedHolding.holding.marketValue)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Select Fund Company */}
+                <div className="space-y-2">
+                  <Label htmlFor="switchCompany" className="text-sm font-medium text-gray-700">
+                    Select Fund Company
+                  </Label>
+                  <Select
+                    value={isConvertMode ? convertData.selectedCompany : switchData.selectedCompany}
+                    onValueChange={(value) => {
+                      const currentCompany = getCompanyFromFundName(selectedHolding.holding.name);
+                      const isSameCompany = value === currentCompany;
+                      
+                      if (!isSameCompany) {
+                        setIsConvertMode(true);
+                        setConvertData({
+                          units: switchData.units,
+                          selectedCompany: value,
+                          selectedFund: "",
+                          selectedFundSymbol: "",
+                          estimatedValue: 0,
+                        });
+                      } else {
+                        setIsConvertMode(false);
+                        setSwitchData({
+                          ...switchData,
+                          selectedCompany: value,
+                          selectedFund: "",
+                          selectedFundSymbol: "",
+                          estimatedValue: 0,
+                        });
+                      }
+                    }}
+                  >
+                    <SelectTrigger id="switchCompany" className="w-full">
+                      <SelectValue placeholder="Select fund company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from(new Set(FUND_DATABASE.map(f => f.company))).map((company) => {
+                        const currentCompany = getCompanyFromFundName(selectedHolding.holding.name);
+                        const isSameCompany = company === currentCompany;
+                        return (
+                          <SelectItem key={company} value={company}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{company}</span>
+                              {isSameCompany && (
+                                <Badge className="ml-2 bg-blue-100 text-blue-700 text-xs">Switch</Badge>
+                              )}
+                              {!isSameCompany && (
+                                <Badge className="ml-2 bg-orange-100 text-orange-700 text-xs">Convert</Badge>
+                              )}
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                  {(isConvertMode ? convertData.selectedCompany : switchData.selectedCompany) && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge className={isConvertMode ? "bg-orange-100 text-orange-700 border-orange-200" : "bg-blue-100 text-blue-700 border-blue-200"}>
+                        {isConvertMode ? "Conversion" : "Switch"}
+                      </Badge>
+                      <span className="text-sm text-gray-600">
+                        ({selectedHolding.holding.name}) → ({isConvertMode ? convertData.selectedCompany : switchData.selectedCompany})
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Select Fund to Switch/Convert to */}
+                {(isConvertMode ? convertData.selectedCompany : switchData.selectedCompany) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="switchFund" className="text-sm font-medium text-gray-700">
+                      Select Fund to {isConvertMode ? "Convert" : "Switch"} to
+                    </Label>
+                    <Select
+                      value={isConvertMode ? convertData.selectedFund : switchData.selectedFund}
+                      onValueChange={(value) => {
+                        const selectedFund = FUND_DATABASE.find(f => f.name === value);
+                        if (selectedFund) {
+                          const units = isConvertMode ? convertData.units : switchData.units;
+                          const unitsNum = parseFloat(units) || 0;
+                          const estimatedValue = unitsNum > 0 ? unitsNum * selectedHolding.holding.price : 0;
+                          
+                          if (isConvertMode) {
+                            setConvertData({
+                              ...convertData,
+                              selectedFund: selectedFund.name,
+                              selectedFundSymbol: selectedFund.symbol,
+                              estimatedValue: estimatedValue,
+                            });
+                          } else {
+                            setSwitchData({
+                              ...switchData,
+                              selectedFund: selectedFund.name,
+                              selectedFundSymbol: selectedFund.symbol,
+                              estimatedValue: estimatedValue,
+                            });
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="switchFund" className="w-full">
+                        <SelectValue placeholder={`Select ${isConvertMode ? convertData.selectedCompany : switchData.selectedCompany} fund`} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {FUND_DATABASE.filter(f => f.company === (isConvertMode ? convertData.selectedCompany : switchData.selectedCompany)).map((fund) => (
+                          <SelectItem key={fund.symbol} value={fund.name}>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{fund.name}</span>
+                              <span className="text-xs text-gray-500">{fund.symbol} • {fund.category || "N/A"}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {/* Units to Switch/Convert */}
+                <div className="space-y-2">
+                  <Label htmlFor="switchUnits" className="text-sm font-medium text-gray-700">
+                    Units to {isConvertMode ? "Convert" : "Switch"}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="switchUnits"
+                      type="number"
+                      step="0.0001"
+                      placeholder={`Max: ${selectedHolding.holding.shares.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}`}
+                      value={isConvertMode ? convertData.units : switchData.units}
+                      onChange={(e) => {
+                        const units = e.target.value;
+                        const unitsNum = parseFloat(units) || 0;
+                        const maxUnits = selectedHolding.holding.shares;
+                        const validUnits = unitsNum > maxUnits ? maxUnits : unitsNum;
+                        const estimatedValue = validUnits * selectedHolding.holding.price;
+                        
+                        if (isConvertMode) {
+                          setConvertData({
+                            ...convertData,
+                            units: units,
+                            estimatedValue: estimatedValue,
+                          });
+                        } else {
+                          setSwitchData({
+                            ...switchData,
+                            units: units,
+                            estimatedValue: estimatedValue,
+                          });
+                        }
+                      }}
+                      className="w-full pr-20"
+                      max={selectedHolding.holding.shares}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = parseFloat(isConvertMode ? convertData.units : switchData.units) || 0;
+                          const newValue = Math.min(current + 1, selectedHolding.holding.shares);
+                          const estimatedValue = newValue * selectedHolding.holding.price;
+                          
+                          if (isConvertMode) {
+                            setConvertData({
+                              ...convertData,
+                              units: newValue.toString(),
+                              estimatedValue: estimatedValue,
+                            });
+                          } else {
+                            setSwitchData({
+                              ...switchData,
+                              units: newValue.toString(),
+                              estimatedValue: estimatedValue,
+                            });
+                          }
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <ChevronUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = parseFloat(isConvertMode ? convertData.units : switchData.units) || 0;
+                          const newValue = Math.max(current - 1, 0);
+                          const estimatedValue = newValue * selectedHolding.holding.price;
+                          
+                          if (isConvertMode) {
+                            setConvertData({
+                              ...convertData,
+                              units: newValue > 0 ? newValue.toString() : "",
+                              estimatedValue: estimatedValue,
+                            });
+                          } else {
+                            setSwitchData({
+                              ...switchData,
+                              units: newValue > 0 ? newValue.toString() : "",
+                              estimatedValue: estimatedValue,
+                            });
+                          }
+                        }}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <ChevronDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Switch/Convert Preview */}
+                <Card className={isConvertMode ? "border border-orange-200 bg-orange-50" : "border border-blue-200 bg-blue-50"}>
+                  <CardContent className="pt-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className={isConvertMode ? "bg-orange-600 text-white" : "bg-blue-600 text-white"}>
+                          {isConvertMode ? "CONVERSION" : "SWITCH"}
+                        </Badge>
+                        <span className={`text-sm font-medium ${isConvertMode ? "text-orange-700" : "text-blue-700"}`}>
+                          ({selectedHolding.holding.name}) → ({(isConvertMode ? convertData.selectedFund : switchData.selectedFund) || (isConvertMode ? convertData.selectedCompany : switchData.selectedCompany) || "Select fund"})
+                        </span>
+                      </div>
+                      <div className={`flex items-center justify-between text-sm ${isConvertMode ? "text-orange-700" : "text-blue-700"}`}>
+                        <span>Units to {isConvertMode ? "convert" : "switch"}:</span>
+                        <span className="font-medium">
+                          {parseFloat(isConvertMode ? convertData.units : switchData.units) || 0}
+                        </span>
+                      </div>
+                      <div className={`flex items-center justify-between text-sm ${isConvertMode ? "text-orange-700" : "text-blue-700"}`}>
+                        <span>Estimated value:</span>
+                        <span className="font-medium">
+                          {formatCurrency(isConvertMode ? convertData.estimatedValue : switchData.estimatedValue)}
+                        </span>
+                      </div>
+                      <div className={`text-xs pt-2 border-t ${isConvertMode ? "text-orange-600 border-orange-200" : "text-blue-600 border-blue-200"}`}>
+                        This will {isConvertMode ? "convert" : "switch"} {selectedHolding.holding.name} to {(isConvertMode ? convertData.selectedFund : switchData.selectedFund) || (isConvertMode ? convertData.selectedCompany : switchData.selectedCompany) || "selected fund"}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setShowSwitchFund(false);
+                setShowConvertFund(false);
+                setIsConvertMode(false);
+              }}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (isConvertMode) {
+                    if (selectedHolding && convertData.estimatedValue > 0 && convertData.selectedFund) {
+                      setConvertConfirmationData({
+                        fromFund: selectedHolding.holding.name,
+                        toFund: convertData.selectedFund,
+                        units: parseFloat(convertData.units) || 0,
+                        estimatedValue: convertData.estimatedValue,
+                      });
+                      setShowSwitchFund(false);
+                      setShowConvertFund(false);
+                      setIsConvertMode(false);
+                      setShowConvertConfirmation(true);
+                    }
+                  } else {
+                    if (selectedHolding && switchData.estimatedValue > 0 && switchData.selectedFund) {
+                      setSwitchConfirmationData({
+                        fromFund: selectedHolding.holding.name,
+                        toFund: switchData.selectedFund,
+                        units: parseFloat(switchData.units) || 0,
+                        estimatedValue: switchData.estimatedValue,
+                      });
+                      setShowSwitchFund(false);
+                      setShowConvertFund(false);
+                      setIsConvertMode(false);
+                      setShowSwitchConfirmation(true);
+                    }
+                  }
+                }}
+                disabled={(isConvertMode ? convertData.estimatedValue : switchData.estimatedValue) === 0 || !(isConvertMode ? convertData.selectedFund : switchData.selectedFund)}
+                className={isConvertMode ? "bg-orange-600 hover:bg-orange-700 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}
+              >
+                Execute {isConvertMode ? "Conversion" : "Switch"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Switch Confirmation Dialog */}
+        <Dialog open={showSwitchConfirmation} onOpenChange={setShowSwitchConfirmation}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center justify-center mb-4">
+                <div className="rounded-full bg-blue-100 p-3">
+                  <CheckCircle2 className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+              <DialogTitle className="text-center text-xl font-semibold text-gray-900">
+                Switch Confirmation
+              </DialogTitle>
+              <DialogDescription className="text-center text-sm text-gray-600">
+                Your switch order has been executed successfully
+              </DialogDescription>
+            </DialogHeader>
+
+            {switchConfirmationData && (
+              <div className="space-y-4 py-4">
+                <Card className="border border-gray-200">
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">From Fund</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {switchConfirmationData.fromFund}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">To Fund</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {switchConfirmationData.toFund}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Units Switched</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {switchConfirmationData.units.toFixed(4)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Estimated Value</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatCurrency(switchConfirmationData.estimatedValue)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setShowSwitchConfirmation(false);
+                  setSwitchConfirmationData(null);
+                  setSwitchData({
+                    units: "",
+                    selectedCompany: "",
+                    selectedFund: "",
+                    selectedFundSymbol: "",
+                    estimatedValue: 0,
+                  });
+                }}
+                className="w-full bg-gray-900 hover:bg-gray-800"
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Convert Confirmation Dialog */}
+        <Dialog open={showConvertConfirmation} onOpenChange={setShowConvertConfirmation}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <div className="flex items-center justify-center mb-4">
+                <div className="rounded-full bg-orange-100 p-3">
+                  <CheckCircle2 className="h-8 w-8 text-orange-600" />
+                </div>
+              </div>
+              <DialogTitle className="text-center text-xl font-semibold text-gray-900">
+                Conversion Confirmation
+              </DialogTitle>
+              <DialogDescription className="text-center text-sm text-gray-600">
+                Your conversion order has been executed successfully
+              </DialogDescription>
+            </DialogHeader>
+
+            {convertConfirmationData && (
+              <div className="space-y-4 py-4">
+                <Card className="border border-gray-200">
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">From Fund</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {convertConfirmationData.fromFund}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500 mb-1">To Fund</p>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {convertConfirmationData.toFund}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Units Converted</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {convertConfirmationData.units.toFixed(4)}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Estimated Value</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {formatCurrency(convertConfirmationData.estimatedValue)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setShowConvertConfirmation(false);
+                  setConvertConfirmationData(null);
+                  setConvertData({
+                    units: "",
+                    selectedCompany: "",
+                    selectedFund: "",
+                    selectedFundSymbol: "",
+                    estimatedValue: 0,
+                  });
+                }}
+                className="w-full bg-gray-900 hover:bg-gray-800"
+              >
+                Close
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
 
