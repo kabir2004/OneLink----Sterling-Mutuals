@@ -332,17 +332,27 @@ const Index = () => {
     { label: 'Trades Pending', value: '3', icon: Clock, iconBg: 'bg-orange-100', iconColor: 'text-orange-600' },
   ];
 
-  // Plan types with counts and hover colors
+  // Plan types with counts, AUA, and hover colors
   const planTypes = [
-    { type: 'TFSA', count: 8, hoverColor: 'hover:bg-blue-50 hover:border-blue-200' },
-    { type: 'RRIF', count: 5, hoverColor: 'hover:bg-purple-50 hover:border-purple-200' },
-    { type: 'RRSP', count: 12, hoverColor: 'hover:bg-green-50 hover:border-green-200' },
-    { type: 'RESP', count: 4, hoverColor: 'hover:bg-yellow-50 hover:border-yellow-200' },
-    { type: 'Non-Registered', count: 6, hoverColor: 'hover:bg-gray-50 hover:border-gray-200' },
-    { type: 'LIRA', count: 2, hoverColor: 'hover:bg-indigo-50 hover:border-indigo-200' },
-    { type: 'LIF', count: 1, hoverColor: 'hover:bg-pink-50 hover:border-pink-200' },
-    { type: 'RDSP', count: 1, hoverColor: 'hover:bg-orange-50 hover:border-orange-200' },
+    { type: 'TFSA', count: 8, aua: 245000, hoverColor: 'hover:bg-blue-50 hover:border-blue-200' },
+    { type: 'RRIF', count: 5, aua: 185000, hoverColor: 'hover:bg-purple-50 hover:border-purple-200' },
+    { type: 'RRSP', count: 12, aua: 385000, hoverColor: 'hover:bg-green-50 hover:border-green-200' },
+    { type: 'RESP', count: 4, aua: 125000, hoverColor: 'hover:bg-yellow-50 hover:border-yellow-200' },
+    { type: 'Non-Registered', count: 6, aua: 285000, hoverColor: 'hover:bg-gray-50 hover:border-gray-200' },
+    { type: 'LIRA', count: 2, aua: 95000, hoverColor: 'hover:bg-indigo-50 hover:border-indigo-200' },
+    { type: 'LIF', count: 1, aua: 45000, hoverColor: 'hover:bg-pink-50 hover:border-pink-200' },
+    { type: 'RDSP', count: 1, aua: 35000, hoverColor: 'hover:bg-orange-50 hover:border-orange-200' },
   ];
+
+  // Format currency helper
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-CA', {
+      style: 'currency',
+      currency: 'CAD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  };
 
   // Calculate total plans
   const totalPlans = planTypes.reduce((sum, plan) => sum + plan.count, 0);
@@ -634,7 +644,7 @@ const Index = () => {
         </div>
 
         {/* Plans */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="border border-gray-200 shadow-sm bg-white">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold text-gray-900">
@@ -648,10 +658,24 @@ const Index = () => {
                   onClick={() => navigate(`/plans?type=${encodeURIComponent(plan.type)}`)}
                   className={`flex items-center justify-between rounded-lg border border-gray-100 px-3 py-2 transition-colors cursor-pointer ${plan.hoverColor}`}
                 >
-                  <p className="font-medium text-sm text-gray-900">{plan.type}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm text-gray-900">{plan.type}</p>
+                    <span className="text-xs text-gray-500">•</span>
+                    <p className="text-xs text-gray-500">{formatCurrency(plan.aua)}</p>
+                  </div>
                   <span className="font-semibold text-sm text-gray-900">{plan.count}</span>
                 </div>
               ))}
+            </CardContent>
+          </Card>
+          
+          {/* Empty Tile */}
+          <Card className="border border-gray-200 shadow-sm bg-white">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold text-gray-900">
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
             </CardContent>
           </Card>
         </div>

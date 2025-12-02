@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Loader2, Plus, Eye, Pencil, Search, ChevronDown, ChevronUp, Minus, ArrowLeftRight, X, CheckCircle2, ChevronLeft, ChevronRight, Sparkles, ArrowLeft, UploadCloud } from "lucide-react";
 import { fundsData } from "@/data/fundsData";
 
@@ -2458,9 +2460,7 @@ export default function Plans() {
   }, [location.search, planTypeOptions]);
   
   const [showAddPlan, setShowAddPlan] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-  const [showViewPlan, setShowViewPlan] = useState(false);
-  const [showEditPlan, setShowEditPlan] = useState(false);
+  const [planViewTab, setPlanViewTab] = useState<"details" | "edit">("details");
   const [expandedHoldings, setExpandedHoldings] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0); // 0: Select Plan Type, 1-3: Setup steps, 4: Success
@@ -2609,6 +2609,22 @@ export default function Plans() {
     });
   }, [plans, searchQuery, typeFilter]);
 
+  // Set first plan as default selected
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  
+  useEffect(() => {
+    if (filteredPlans.length > 0 && !selectedPlan) {
+      setSelectedPlan(filteredPlans[0]);
+      setExpandedHoldings(new Set());
+    } else if (filteredPlans.length === 0) {
+      setSelectedPlan(null);
+    } else if (selectedPlan && !filteredPlans.find(p => p.id === selectedPlan.id)) {
+      // If selected plan is no longer in filtered list, select first one
+      setSelectedPlan(filteredPlans[0]);
+      setExpandedHoldings(new Set());
+    }
+  }, [filteredPlans]);
+
   const toggleTypeFilter = (type: PlanType) => {
     setTypeFilter((prev) => {
       const next = new Set(prev);
@@ -2736,43 +2752,6 @@ export default function Plans() {
     resetForm();
   };
 
-  const handleViewPlan = (plan: Plan) => {
-    if (selectedPlan?.id === plan.id && showViewPlan) {
-      // If clicking the same plan in view mode, close it
-      setSelectedPlan(null);
-      setShowViewPlan(false);
-      setShowEditPlan(false);
-    } else {
-      // Otherwise, open the selected plan in view mode
-      setSelectedPlan(plan);
-      setShowViewPlan(true);
-      setShowEditPlan(false);
-      setExpandedHoldings(new Set());
-    }
-  };
-
-  const handleEditPlan = (plan: Plan) => {
-    if (selectedPlan?.id === plan.id && showEditPlan) {
-      // If clicking the same plan in edit mode, close it
-      setSelectedPlan(null);
-      setShowEditPlan(false);
-      setShowViewPlan(false);
-    } else {
-      // Otherwise, open the selected plan in edit mode
-      setSelectedPlan(plan);
-      setEditFormValues({
-        type: plan.type,
-        accountNumber: plan.accountNumber,
-        clientId: plan.clientId,
-        clientName: plan.clientName,
-        openedDate: plan.openedDate,
-        contributionRoom: plan.contributionRoom?.toString() || "",
-        contributionUsed: plan.contributionUsed?.toString() || "",
-      });
-      setShowEditPlan(true);
-      setShowViewPlan(false);
-    }
-  };
 
   const handleSaveEdit = () => {
     if (!selectedPlan || !editFormValues.type || !editFormValues.accountNumber) {
@@ -2798,9 +2777,19 @@ export default function Plans() {
             : plan
         )
       );
-      setShowEditPlan(false);
-      setShowViewPlan(false);
-      setSelectedPlan(null);
+      // Update selected plan with new values
+      setSelectedPlan({
+        ...selectedPlan,
+        type: editFormValues.type as PlanType,
+        accountNumber: editFormValues.accountNumber,
+        clientId: editFormValues.clientId,
+        clientName: editFormValues.clientName,
+        status: editFormValues.status,
+        openedDate: editFormValues.openedDate,
+        contributionRoom: editFormValues.contributionRoom ? parseFloat(editFormValues.contributionRoom) : undefined,
+        contributionUsed: editFormValues.contributionUsed ? parseFloat(editFormValues.contributionUsed) : undefined,
+      });
+      setPlanViewTab("details");
       setIsLoading(false);
     }, 500);
   };
@@ -2970,95 +2959,96 @@ export default function Plans() {
                   Add Plan
                 </Button>
               </div>
-            ) : (
-              <div className={`flex gap-4 ${(showViewPlan || showEditPlan) && selectedPlan ? 'flex-row' : ''}`}>
+            ) : selectedPlan ? (
+              <ResizablePanelGroup direction="horizontal" className="min-h-0">
                 {/* Table Section */}
-                <div className={`overflow-x-auto ${(showViewPlan || showEditPlan) && selectedPlan ? 'w-[55%]' : 'w-full'}`}>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-center">Account Number</TableHead>
-                        <TableHead className="text-center">Plan Type</TableHead>
-                        <TableHead className="text-center">Client</TableHead>
-                        <TableHead className="text-center">Market Value</TableHead>
-                        <TableHead className="text-center">Holdings</TableHead>
-                        <TableHead className="text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredPlans.map((plan) => (
-                        <TableRow key={plan.id} className="hover:bg-gray-50">
-                          <TableCell className="text-center font-medium text-gray-900">
-                            {plan.accountNumber}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <span
-                              className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${planTypeBadgeStyles[plan.type]}`}
-                            >
-                              {plan.type}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-center text-sm text-gray-700">
-                            {plan.clientName}
-                          </TableCell>
-                          <TableCell className="text-center text-sm font-medium text-gray-900">
-                            {formatCurrency(plan.marketValue)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge variant="secondary" className="text-xs">
-                              {plan.holdings.length} holding(s)
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-gray-300 h-8 w-8 p-0"
-                                onClick={() => handleViewPlan(plan)}
-                                title="View"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-gray-300 h-8 w-8 p-0"
-                                title="Edit"
-                                onClick={() => handleEditPlan(plan)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
+                <ResizablePanel defaultSize={55} minSize={10} maxSize={90} className="min-w-0">
+                  <div className="overflow-x-auto h-full pr-2">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-center">Account Number</TableHead>
+                          <TableHead className="text-center">Plan Type</TableHead>
+                          <TableHead className="text-center">Client</TableHead>
+                          <TableHead className="text-center">Market Value</TableHead>
+                          <TableHead className="text-center">Holdings</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredPlans.map((plan) => (
+                          <TableRow 
+                            key={plan.id} 
+                            className={`hover:bg-gray-50 cursor-pointer ${selectedPlan?.id === plan.id ? 'bg-blue-50' : ''}`}
+                            onClick={() => {
+                              setSelectedPlan(plan);
+                              setPlanViewTab("details");
+                              setExpandedHoldings(new Set());
+                            }}
+                          >
+                            <TableCell className="text-center font-medium text-gray-900">
+                              {plan.accountNumber}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span
+                                className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${planTypeBadgeStyles[plan.type]}`}
+                              >
+                                {plan.type}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-center text-sm text-gray-700">
+                              {plan.clientName}
+                            </TableCell>
+                            <TableCell className="text-center text-sm font-medium text-gray-900">
+                              {formatCurrency(plan.marketValue)}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Badge variant="secondary" className="text-xs">
+                                {plan.holdings.length} holding(s)
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </ResizablePanel>
 
-                {/* Plan Details Section - Right Side (View Mode) */}
-                {showViewPlan && selectedPlan && !showEditPlan && (
-                  <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
-                    <div className="sticky top-0 pt-4">
+                <ResizableHandle withHandle />
+
+                {/* Plan View - Right Side with Tabs */}
+                <ResizablePanel defaultSize={45} minSize={25} maxSize={95} className="min-w-0">
+                  <div className="h-full border-l border-gray-200 pl-4 pr-4 pb-4">
+                    <div className="sticky top-0 pt-4 bg-white z-10 pb-4">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {selectedPlan.accountNumber}
-                        </h3>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {selectedPlan.accountNumber}
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {selectedPlan.clientName} • {selectedPlan.type}
+                          </p>
+                        </div>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => {
                             setSelectedPlan(null);
-                            setShowViewPlan(false);
+                            setPlanViewTab("details");
                           }}
                           className="h-8 w-8 p-0"
                         >
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
-                      <ScrollArea className="h-[calc(100vh-300px)] pr-2">
-                        <div className="space-y-4">
+                      <Tabs value={planViewTab} onValueChange={(value) => setPlanViewTab(value as "details" | "edit")}>
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="details">Details</TabsTrigger>
+                          <TabsTrigger value="edit">Edit</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="details" className="mt-4">
+                          <ScrollArea className="h-[calc(100vh-380px)] pr-2">
+                            <div className="space-y-4">
                           {/* Plan Summary */}
                           <Card className="border border-gray-200 shadow-sm bg-white">
                             <CardHeader className="pb-3">
@@ -3256,41 +3246,19 @@ export default function Plans() {
                               </div>
                             </CardContent>
                           </Card>
-                        </div>
-                      </ScrollArea>
-                    </div>
-                  </div>
-                )}
-
-                {/* Edit Plan Section - Right Side */}
-                {showEditPlan && selectedPlan && (
-                  <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
-                    <div className="sticky top-0 pt-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                          <Pencil className="h-5 w-5" />
-                          Edit Plan
-                        </h3>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedPlan(null);
-                            setShowEditPlan(false);
-                          }}
-                          className="h-8 w-8 p-0"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <ScrollArea className="h-[calc(100vh-300px)] pr-2">
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            handleSaveEdit();
-                          }}
-                          className="space-y-4"
-                        >
+                            </div>
+                          </ScrollArea>
+                        </TabsContent>
+                        
+                        <TabsContent value="edit" className="mt-4">
+                          <ScrollArea className="h-[calc(100vh-380px)] pr-2">
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                handleSaveEdit();
+                              }}
+                              className="space-y-4"
+                            >
                           <Card className="border border-gray-200 shadow-sm bg-white">
                             <CardHeader className="pb-3">
                               <CardTitle className="text-sm font-semibold text-gray-900">
@@ -3407,34 +3375,84 @@ export default function Plans() {
                             </CardContent>
                           </Card>
 
-                          <div className="flex justify-end gap-3 pb-4">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                setSelectedPlan(null);
-                                setShowEditPlan(false);
-                              }}
-                              className="h-9 text-sm"
-                            >
-                              Cancel
-                            </Button>
-                            <Button type="submit" disabled={isLoading} className="bg-gray-900 hover:bg-gray-800 h-9 text-sm">
-                              {isLoading ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Saving...
-                                </>
-                              ) : (
-                                "Save Changes"
-                              )}
-                            </Button>
-                          </div>
-                        </form>
-                      </ScrollArea>
+                              <div className="flex justify-end gap-3 pb-4">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setPlanViewTab("details");
+                                  }}
+                                  className="h-9 text-sm"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button type="submit" disabled={isLoading} className="bg-gray-900 hover:bg-gray-800 h-9 text-sm">
+                                  {isLoading ? (
+                                    <>
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                      Saving...
+                                    </>
+                                  ) : (
+                                    "Save Changes"
+                                  )}
+                                </Button>
+                              </div>
+                            </form>
+                          </ScrollArea>
+                        </TabsContent>
+                      </Tabs>
                     </div>
                   </div>
-                )}
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            ) : (
+              <div className="overflow-x-auto w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">Account Number</TableHead>
+                      <TableHead className="text-center">Plan Type</TableHead>
+                      <TableHead className="text-center">Client</TableHead>
+                      <TableHead className="text-center">Market Value</TableHead>
+                      <TableHead className="text-center">Holdings</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPlans.map((plan) => (
+                      <TableRow 
+                        key={plan.id} 
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          setSelectedPlan(plan);
+                          setPlanViewTab("details");
+                          setExpandedHoldings(new Set());
+                        }}
+                      >
+                        <TableCell className="text-center font-medium text-gray-900">
+                          {plan.accountNumber}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span
+                            className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${planTypeBadgeStyles[plan.type]}`}
+                          >
+                            {plan.type}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-center text-sm text-gray-700">
+                          {plan.clientName}
+                        </TableCell>
+                        <TableCell className="text-center text-sm font-medium text-gray-900">
+                          {formatCurrency(plan.marketValue)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="secondary" className="text-xs">
+                            {plan.holdings.length} holding(s)
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             )}
           </CardContent>

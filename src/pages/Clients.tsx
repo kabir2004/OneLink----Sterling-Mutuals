@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageLayout } from "@/components/layout/PageLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Loader2, Plus, UploadCloud, Eye, Pencil, FileUp, ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus, ArrowLeftRight, FileText, X, CheckCircle2, Search, ArrowLeft } from "lucide-react";
 
 type DocumentStatus = "Uploaded" | "Required" | "Missing";
@@ -1200,11 +1202,9 @@ const Clients = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>(CLIENTS);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(CLIENTS.length > 0 ? CLIENTS[0] : null);
+  const [clientViewTab, setClientViewTab] = useState<"details" | "edit" | "upload">("details");
   const [showAddClient, setShowAddClient] = useState(false);
-  const [showEditClient, setShowEditClient] = useState(false);
-  const [showUploadDocs, setShowUploadDocs] = useState(false);
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());
   const [uploadedDocuments, setUploadedDocuments] = useState<Record<string, Array<{ id: string; name: string; date: string; file?: File }>>>({});
   const [showBuyUnits, setShowBuyUnits] = useState(false);
@@ -1390,87 +1390,72 @@ const Clients = () => {
   const toggleDocFilter = (status: DocumentStatus) =>
     setDocFilter((prev) => ({ ...prev, [status]: !prev[status] }));
 
-  const handleViewClient = (client: Client) => {
-    if (selectedClient?.id === client.id && showDetails) {
-      setSelectedClient(null);
-      setShowDetails(false);
+  // Expand plans when selected client changes
+  useEffect(() => {
+    if (selectedClient && Array.isArray(selectedClient.plans)) {
+      setExpandedPlans(new Set(selectedClient.plans.map(p => p.id)));
     } else {
-      setSelectedClient(client);
-      if (Array.isArray(client.plans)) {
-        setExpandedPlans(new Set(client.plans.map(p => p.id)));
-      } else {
-        setExpandedPlans(new Set());
-      }
-      setShowDetails(true);
-      setShowEditClient(false);
-      setShowUploadDocs(false);
+      setExpandedPlans(new Set());
     }
-  };
+  }, [selectedClient]);
 
-  const handleEditClient = (client: Client) => {
-    if (selectedClient?.id === client.id && showEditClient) {
-      setSelectedClient(null);
-      setShowEditClient(false);
-      setFormError(null);
-    } else {
-      setSelectedClient(client);
-      setShowEditClient(true);
-      setShowDetails(false);
-      setShowUploadDocs(false);
+  // Initialize edit form values when switching to edit tab
+  useEffect(() => {
+    if (clientViewTab === "edit" && selectedClient) {
       setFormError(null);
       setEditFormValues({
-      // Personal Information
-      name: client.name,
-      accountNumber: client.accountNumber,
-      email: client.email,
-      phone: client.phone,
-      dateOfBirth: "",
-      address: "",
-      city: "",
-      province: "",
-      postalCode: "",
-      ssnTin: "",
-      passport: "",
-      occupation: "",
-      employmentStatus: "",
-      maritalStatus: "",
-      dependents: "",
-      healthConsiderations: "",
-      lifeStage: "",
-      taxStatus: "",
-      // Financial Information
-      annualIncome: "",
-      expectedFutureIncome: "",
-      netWorth: "",
-      assets: "",
-      liabilities: "",
-      liquidityNeeds: "",
-      cashFlowPatterns: "",
-      investableFunds: "",
-      // Investment Objectives
-      primaryObjective: "",
-      timeHorizon: "",
-      assetAllocation: "",
-      diversificationStrategy: "",
-      rebalancingRules: "",
-      investmentStrategy: "",
-      // Risk Tolerance
-      riskProfile: "",
-      riskAttitude: "",
-      investmentExperience: "",
-      yearsInvesting: "",
-      knowledgeLevel: "",
-      // Beneficiaries
-      status: client.status,
-      beneficiary: "",
-      contingentBeneficiary: "",
-      accountType: "",
-      accountOwnership: "",
-      relationshipRoles: "",
-      clientType: "",
+        // Personal Information
+        name: selectedClient.name,
+        accountNumber: selectedClient.accountNumber,
+        email: selectedClient.email,
+        phone: selectedClient.phone,
+        dateOfBirth: "",
+        address: "",
+        city: "",
+        province: "",
+        postalCode: "",
+        ssnTin: "",
+        passport: "",
+        occupation: "",
+        employmentStatus: "",
+        maritalStatus: "",
+        dependents: "",
+        healthConsiderations: "",
+        lifeStage: "",
+        taxStatus: "",
+        // Financial Information
+        annualIncome: "",
+        expectedFutureIncome: "",
+        netWorth: "",
+        assets: "",
+        liabilities: "",
+        liquidityNeeds: "",
+        cashFlowPatterns: "",
+        investableFunds: "",
+        // Investment Objectives
+        primaryObjective: "",
+        timeHorizon: "",
+        assetAllocation: "",
+        diversificationStrategy: "",
+        rebalancingRules: "",
+        investmentStrategy: "",
+        // Risk Tolerance
+        riskProfile: "",
+        riskAttitude: "",
+        investmentExperience: "",
+        yearsInvesting: "",
+        knowledgeLevel: "",
+        // Beneficiaries
+        status: selectedClient.status,
+        beneficiary: "",
+        contingentBeneficiary: "",
+        accountType: "",
+        accountOwnership: "",
+        relationshipRoles: "",
+        clientType: "",
       });
     }
-  };
+  }, [clientViewTab, selectedClient]);
 
   const handleSaveEdit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -1508,7 +1493,7 @@ const Clients = () => {
       });
     }
 
-    setShowEditClient(false);
+    setClientViewTab("details");
     setFormError(null);
   };
 
@@ -1738,103 +1723,77 @@ const Clients = () => {
                     Add Client
                   </Button>
                 </div>
-              ) : (
-                <div className={`flex gap-4 ${(showDetails || showEditClient || showUploadDocs) && selectedClient ? 'flex-row' : ''}`}>
+              ) : selectedClient ? (
+                <ResizablePanelGroup direction="horizontal" className="min-h-0">
                   {/* Table Section */}
-                  <div className={`overflow-x-auto ${(showDetails || showEditClient || showUploadDocs) && selectedClient ? 'w-[55%]' : 'w-full'}`}>
-                    <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Client</TableHead>
-                        <TableHead>Account #</TableHead>
-                        <TableHead>Documents</TableHead>
-                        <TableHead>AUA</TableHead>
-                        <TableHead>Plans</TableHead>
-                        <TableHead className="text-center">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredClients.map((client) => (
-                        <TableRow key={client.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium text-gray-900">
-                                {client.name}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {client.email}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-700">
-                            {client.accountNumber}
-                          </TableCell>
-                          <TableCell>
-                            <span
-                              className={`rounded-full px-2 py-1 text-xs font-medium ${docBadgeStyles[client.documents]}`}
+                  <ResizablePanel defaultSize={55} minSize={10} maxSize={90} className="min-w-0">
+                    <div className="overflow-x-auto h-full pr-2">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Account #</TableHead>
+                            <TableHead>Documents</TableHead>
+                            <TableHead>AUA</TableHead>
+                            <TableHead>Plans</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredClients.map((client) => (
+                            <TableRow 
+                              key={client.id} 
+                              className={`hover:bg-gray-50 cursor-pointer ${selectedClient?.id === client.id ? 'bg-blue-50' : ''}`}
+                              onClick={() => {
+                                setSelectedClient(client);
+                                setClientViewTab("details");
+                                if (Array.isArray(client.plans)) {
+                                  setExpandedPlans(new Set(client.plans.map(p => p.id)));
+                                } else {
+                                  setExpandedPlans(new Set());
+                                }
+                              }}
                             >
-                              {client.documents}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-sm text-gray-700">
-                            {client.assets}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-xs">
-                              {client.plans.length} plan(s)
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-gray-300 h-8 w-8 p-0"
-                                onClick={() => handleViewClient(client)}
-                                title="View"
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-gray-300 h-8 w-8 p-0"
-                                title="Edit"
-                                onClick={() => handleEditClient(client)}
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="border-gray-300 h-8 w-8 p-0"
-                                title="Upload Docs"
-                                onClick={() => {
-                                  if (selectedClient?.id === client.id && showUploadDocs) {
-                                    setSelectedClient(null);
-                                    setShowUploadDocs(false);
-                                  } else {
-                                    setSelectedClient(client);
-                                    setShowUploadDocs(true);
-                                    setShowDetails(false);
-                                    setShowEditClient(false);
-                                  }
-                                }}
-                              >
-                                <FileUp className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  </div>
+                              <TableCell>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {client.name}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {client.email}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-sm text-gray-700">
+                                {client.accountNumber}
+                              </TableCell>
+                              <TableCell>
+                                <span
+                                  className={`rounded-full px-2 py-1 text-xs font-medium ${docBadgeStyles[client.documents]}`}
+                                >
+                                  {client.documents}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-sm text-gray-700">
+                                {client.assets}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary" className="text-xs">
+                                  {client.plans.length} plan(s)
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </ResizablePanel>
 
-                  {/* View Client Details - Right Side */}
-                  {showDetails && selectedClient && !showEditClient && !showUploadDocs && (
-                    <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
-                      <div className="sticky top-0 pt-4">
+                  <ResizableHandle withHandle />
+
+                  {/* Client View - Right Side with Tabs */}
+                  <ResizablePanel defaultSize={45} minSize={25} maxSize={95} className="min-w-0">
+                    <div className="h-full border-l border-gray-200 pl-4 pr-4 pb-4">
+                      <div className="sticky top-0 pt-4 bg-white z-10 pb-4">
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <h3 className="text-lg font-semibold text-gray-900">
@@ -1849,15 +1808,23 @@ const Clients = () => {
                             size="sm"
                             onClick={() => {
                               setSelectedClient(null);
-                              setShowDetails(false);
+                              setClientViewTab("details");
                             }}
                             className="h-8 w-8 p-0"
                           >
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
-                        <ScrollArea className="h-[calc(100vh-300px)] pr-2">
-                          <div className="space-y-4">
+                        <Tabs value={clientViewTab} onValueChange={(value) => setClientViewTab(value as "details" | "edit" | "upload")}>
+                          <TabsList className="grid w-full grid-cols-3">
+                            <TabsTrigger value="details">Details</TabsTrigger>
+                            <TabsTrigger value="edit">Edit</TabsTrigger>
+                            <TabsTrigger value="upload">Upload Docs</TabsTrigger>
+                          </TabsList>
+                          
+                          <TabsContent value="details" className="mt-4">
+                            <ScrollArea className="h-[calc(100vh-380px)] pr-2">
+                              <div className="space-y-4">
                             {/* Client Summary */}
                             <Card className="border border-gray-200 shadow-sm bg-white">
                               <CardHeader className="pb-3">
@@ -2101,41 +2068,19 @@ const Clients = () => {
                                 </CardContent>
                               </Card>
                             )}
-                          </div>
-                        </ScrollArea>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Edit Client - Right Side */}
-                  {showEditClient && selectedClient && !showDetails && !showUploadDocs && (
-                    <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
-                      <div className="sticky top-0 pt-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <Pencil className="h-5 w-5" />
-                            Edit Client
-                          </h3>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedClient(null);
-                              setShowEditClient(false);
-                            }}
-                            className="h-8 w-8 p-0"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="h-[calc(100vh-300px)] pr-2">
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              handleSaveEdit(e);
-                            }}
-                            className="space-y-4"
-                          >
+                              </div>
+                            </ScrollArea>
+                          </TabsContent>
+                          
+                          <TabsContent value="edit" className="mt-4">
+                            <ScrollArea className="h-[calc(100vh-380px)] pr-2">
+                              <form
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  handleSaveEdit(e);
+                                }}
+                                className="space-y-4"
+                              >
                             {formError && (
                               <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
                                 {formError}
@@ -2231,8 +2176,7 @@ const Clients = () => {
                                 type="button"
                                 variant="outline"
                                 onClick={() => {
-                                  setSelectedClient(null);
-                                  setShowEditClient(false);
+                                  setClientViewTab("details");
                                   setFormError(null);
                                 }}
                                 className="flex-1 border-gray-300"
@@ -2243,40 +2187,13 @@ const Clients = () => {
                                 Save Changes
                               </Button>
                             </div>
-                          </form>
-                        </ScrollArea>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Upload Documents - Right Side */}
-                  {showUploadDocs && selectedClient && !showDetails && !showEditClient && (
-                    <div className="w-[45%] border-l border-gray-200 pl-4 pr-4 pb-4">
-                      <div className="sticky top-0 pt-4">
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                              <FileUp className="h-5 w-5" />
-                              Upload Documents
-                            </h3>
-                            <p className="text-sm text-gray-600 mt-1">
-                              {selectedClient.name} • Account {selectedClient.accountNumber}
-                            </p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedClient(null);
-                              setShowUploadDocs(false);
-                            }}
-                            className="h-8 w-8 p-0"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="h-[calc(100vh-300px)] pr-2">
-                          <div className="space-y-4">
+                              </form>
+                            </ScrollArea>
+                          </TabsContent>
+                          
+                          <TabsContent value="upload" className="mt-4">
+                            <ScrollArea className="h-[calc(100vh-380px)] pr-2">
+                              <div className="space-y-4">
                             {/* Document Category 1 */}
                             <Card className="border border-gray-200 shadow-sm bg-white">
                               <CardHeader className="pb-3">
@@ -2932,11 +2849,73 @@ const Clients = () => {
                                 )}
                               </CardContent>
                             </Card>
-                          </div>
-                        </ScrollArea>
+                              </div>
+                            </ScrollArea>
+                          </TabsContent>
+                        </Tabs>
                       </div>
                     </div>
-                  )}
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              ) : (
+                <div className="overflow-x-auto w-full">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Client</TableHead>
+                        <TableHead>Account #</TableHead>
+                        <TableHead>Documents</TableHead>
+                        <TableHead>AUA</TableHead>
+                        <TableHead>Plans</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredClients.map((client) => (
+                        <TableRow 
+                          key={client.id} 
+                          className="hover:bg-gray-50 cursor-pointer"
+                          onClick={() => {
+                            setSelectedClient(client);
+                            setClientViewTab("details");
+                            if (Array.isArray(client.plans)) {
+                              setExpandedPlans(new Set(client.plans.map(p => p.id)));
+                            } else {
+                              setExpandedPlans(new Set());
+                            }
+                          }}
+                        >
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium text-gray-900">
+                                {client.name}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {client.email}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-700">
+                            {client.accountNumber}
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={`rounded-full px-2 py-1 text-xs font-medium ${docBadgeStyles[client.documents]}`}
+                            >
+                              {client.documents}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-gray-700">
+                            {client.assets}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-xs">
+                              {client.plans.length} plan(s)
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>
